@@ -21,11 +21,6 @@ import javax.swing.border.EtchedBorder;
 
 import mtk.resizer.ctrl.ActionListener;
 
-/**
- * created from PMTExctractor
- * @author DSI/SDM 2011
- *
- */
 public class JMTKDataResizer extends JFrame {
 
 	private static final long serialVersionUID = 2L;
