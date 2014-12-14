@@ -21,31 +21,11 @@ import javax.swing.border.EtchedBorder;
 
 import mtk.resizer.ctrl.ActionListener;
 
-/**
- * created from PMTExctractor
- * @author DSI/SDM 2011
- *
- */
 public class JMTKDataResizer extends JFrame {
 
 	private static final long serialVersionUID = 2L;
 
-	public final static String ABOUT = "JMTKDataResizer v1.0 by boudhaim@gmail.com";
-
-	/*
-	private static final String[] looks = {//"javax.swing.plaf.metal.MetalLookAndFeel",
-										   "com.jgoodies.looks.plastic.PlasticXPLookAndFeel",
-										   "com.jgoodies.looks.plastic.PlasticLookAndFeel",
-										   "com.jgoodies.looks.plastic.Plastic3DLookAndFeel",
-										   "javax.swing.plaf.nimbus.NimbusLookAndFeel"};
-	*/
-
-	private static int initPersent = 20;
-
-	private static final long GB = 0x40000000;	// 1GB = 1073741824 Byte;
-
-    private static long totalSize = 8 * GB;
-    private static int dataPercent = initPersent;
+	public final static String ABOUT = "JMTKDataResizer v1.0";
 
 	public JTextField jtScatFile;
 	public JLabel jlData;
@@ -66,18 +46,12 @@ public class JMTKDataResizer extends JFrame {
     public  JPanel jpTabScatter;
     private JPanel jpTabHelp;
 
-    private static String getSize(int percent) {
-    	double size = (totalSize * percent/100f)/GB;
-
-    	return Math.round(size * 100f)/100f + " GB";
-    }
-
     public void init() throws Exception {
 
     	jpTabResizer = new JPanel(new GridLayout(2,1));
 
     	// the resizer panel
-    	jpResizer = new ResizerPanel(initPersent);
+    	jpResizer = new ResizerPanel();
 
     	jpResizer2 = new JPanel(new GridLayout(2, 1));
     	//jpResizer.setBackground(Color.GRAY);
@@ -87,8 +61,8 @@ public class JMTKDataResizer extends JFrame {
     	jtScatFile = new JTextField("put here your scatter file (MT65XX_Android_scatter.txt)");
 		jtScatFile.setColumns(35);
 		jtScatFile.setEditable(false);
-    	jlData = new JLabel("Data: " + getSize(dataPercent));
-    	jlStor = new JLabel("Storage: " + getSize(100 - dataPercent));
+    	jlData = new JLabel("Data: 4 GB");
+    	jlStor = new JLabel("Storage: 12 GB");
     	jbPlusData = new JButton(new ImageIcon(JMTKDataResizer.class.getClassLoader().getResource("images/plus_blue.png")));
     	jbPlusData.setEnabled(false);
     	jbPlusStor = new JButton(new ImageIcon(JMTKDataResizer.class.getClassLoader().getResource("images/plus_green.png")));
@@ -172,7 +146,15 @@ public class JMTKDataResizer extends JFrame {
 		jtabPan.addTab("Log", jsLog);
 		// Help Tab
 		jtabPan.addTab("Help", jpTabHelp = new JPanel(new GridLayout()));
-		JTextArea help = new JTextArea("Je suis la");
+		JTextArea help = new JTextArea("\nTo increase/decrease your DATA partition :\n\n");
+		help.setText(help.getText() + "1- In MtkDroidTools, do a backup for your phone and create SPFlashTool files\n");
+		help.setText(help.getText() + "2- Open the scatter created in 1 in this program\n");
+		help.setText(help.getText() + "3- Adjust the sizes you want with the PLUS buttons\n");
+		help.setText(help.getText() + "4- Apply changes and flash the modded scatter in SPFlashTool\n");
+		help.setText(help.getText() + "5- the new scatter is in the same dir: MT65XX_Android_scatter_MOD.txt\n\n");
+		help.setText(help.getText() + "If the Apply button is disabled, see the log tab:\n");
+		help.setText(help.getText() + "In general your scatter is incompatible or you do not have the size of FAT in the scatter\n");
+		help.setText(help.getText() + "Please use MTKdroidTools to have this information and add it manualy to your scatter\n");
 		help.setEditable(false);
 		jpTabHelp.add(help);
 		add(jtabPan);

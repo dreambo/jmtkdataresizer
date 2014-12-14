@@ -9,13 +9,9 @@ public class ResizerPanel extends JPanel {
 
 	private static final long serialVersionUID = 1L;
 
-	private int dataPercent;
+	private int dataPercent = 25;
 
 	public void setDataPercent(int dataPercent) {
-		this.dataPercent = dataPercent;
-	}
-
-	public ResizerPanel(int dataPercent) {
 		this.dataPercent = dataPercent;
 	}
 
