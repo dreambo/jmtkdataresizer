@@ -20,7 +20,7 @@ import mtk.resizer.scatter.ScatterFactory;
 
 public class ActionListener implements java.awt.event.ActionListener {
 
-	private String DEFAULT_DIR = "C:/Users/SONY/Desktop/Tools/MTK/MtkDroidTools/backups/709v92_jbla828_141010_backup_141208-194710";
+	private String DEFAULT_DIR = "C:/Users/SONY/Desktop/Tools/MTK/MtkDroidTools/backups";
 
 	private static final long MB = 0x100000;	// 1MB = 1048576 Byte;
 	private static final long GB = 0x40000000;	// 1GB = 1073741824 Byte;
@@ -148,16 +148,16 @@ public class ActionListener implements java.awt.event.ActionListener {
 			    	long dataSize = scatter.getDataSize();
 			    	totalSize = scatter.getTotalSize();
 
-			    	MBR  = (scatter.getMBR()  == null ? null : new BootRecord(new File(DEFAULT_DIR, scatter.getMBR()),  null));
-			    	EBR1 = (scatter.getEBR1() == null ? null : new BootRecord(new File(DEFAULT_DIR, scatter.getEBR1()), MBR));
-			    	EBR2 = (scatter.getEBR2() == null ? null : new BootRecord(new File(DEFAULT_DIR, scatter.getEBR2()), MBR));
-
 			    	// init
 			    	BootRecord.offsetMBR = scatter.getMBRStart();
 			    	BootRecord.parts.clear();
 
 			    	long dataStart = scatter.getDataStart()/BootRecord.BPS;
-			    	long fatStart  = scatter.getFatStart()/BootRecord.BPS;
+			    	long fatStart  =  scatter.getFatStart()/BootRecord.BPS;
+
+			    	MBR  = (scatter.getMBR()  == null ? null : new BootRecord(new File(DEFAULT_DIR, scatter.getMBR()),  null));
+			    	EBR1 = (scatter.getEBR1() == null ? null : new BootRecord(new File(DEFAULT_DIR, scatter.getEBR1()), MBR));
+			    	EBR2 = (scatter.getEBR2() == null ? null : new BootRecord(new File(DEFAULT_DIR, scatter.getEBR2()), MBR));
 
 			    	long offsetEBR1 = 0;
 			    	if (MBR != null) MBR.detectParts(dataStart, fatStart, -1, -1);
@@ -180,6 +180,7 @@ public class ActionListener implements java.awt.event.ActionListener {
 			    	if (!sizesOk) {
 			    		addLog("FAT and DATA sizes must be present in the scatter file!");
 			    		addLog("Please check your scatter (it is made by MtkDroiTools ?)");
+			    		addLog("You can manualy add DATA and FAT sizes in the scatter using MtkDroiTools");
 			    	}
 
 			    	if (!partsOk) {
