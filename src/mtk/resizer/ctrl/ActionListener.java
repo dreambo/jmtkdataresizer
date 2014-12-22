@@ -83,9 +83,9 @@ public class ActionListener implements java.awt.event.ActionListener {
 
     private void applyChanges() {
 
-    	boolean sysChange	= (display.percents[0] != display.iniPercents[0]);
-    	boolean cacheChange = (display.percents[1] != display.iniPercents[1]);
-    	boolean dataChange	= (display.percents[2] != display.iniPercents[2]);
+    	boolean sysChange	= (Util.getPercent(display.percents[0]) != Util.getPercent(display.iniPercents[0]));
+    	boolean cacheChange = (Util.getPercent(display.percents[1]) != Util.getPercent(display.iniPercents[1]));
+    	boolean dataChange	= (Util.getPercent(display.percents[2]) != Util.getPercent(display.iniPercents[2]));
     	//boolean fatChange	= ((display.percents[0] + display.percents[1] + display.percents[2]) != (display.iniPercents[0] + display.iniPercents[1] + display.iniPercents[2]));
 
 		long newSysSize		= (sysChange	? BS * Math.round((totalSize * display.percents[0]/((double) CENT))/BS) : sysSize);

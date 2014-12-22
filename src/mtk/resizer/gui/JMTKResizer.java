@@ -32,8 +32,8 @@ public class JMTKResizer extends JFrame {
 
 	public final static String ABOUT = "JMTKResizer v2.0";
 
-	public int[] iniPercents = new int[] {10000, 20000, 30000};
-	public int[] percents	 = new int[] {10000, 20000, 30000};
+	public int[] iniPercents = new int[] {5000, 6000, 8000};
+	public int[] percents	 = new int[] {5000, 6000, 8000};
 
 	public JLabel  jlSys;
 	public JLabel  jlCache;

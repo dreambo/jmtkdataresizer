@@ -87,7 +87,7 @@ public class ResizerListener extends MouseAdapter {
 		int sysWidth	= Math.round(panel.frame.percents[0] * (totalWidth/((float) CENT)));
 		int cacheWidth	= Math.round(panel.frame.percents[1] * (totalWidth/((float) CENT)));
 		//int dataWidth	= Math.round(panel.frame.percents[2]  * (totalWidth/((float) CENT)));
-		int x, percent, pTotal;
+		int x, percent, pTotal, ONE = Math.round(CENT/100f);
 		boolean resize;
 
 		if (sys) {
@@ -98,7 +98,7 @@ public class ResizerListener extends MouseAdapter {
 			int i = (resize ? 1 : 2);
 			pTotal = (dataResize || resize ? panel.frame.percents[0] + panel.frame.percents[i] : (CENT - (panel.frame.percents[1] + panel.frame.percents[2])));
 			percent = Math.round(CENT * (((float) (p.x - x))/totalWidth));
-			panel.frame.percents[0] = (percent > 0 ? (percent < pTotal ? percent : pTotal - (CENT/100)) : (CENT/100));
+			panel.frame.percents[0] = (percent > 0 ? (percent < pTotal ? percent : pTotal - ONE) : ONE);
 			panel.frame.percents[i] = (dataResize || resize ? pTotal - panel.frame.percents[0] : panel.frame.percents[i]);
 
 		} else if (cache) {
@@ -106,14 +106,14 @@ public class ResizerListener extends MouseAdapter {
 			resize = panel.frame.jbData.getBackground() != Color.BLACK;
 			pTotal = (resize ? panel.frame.percents[1] + panel.frame.percents[2] : CENT - (panel.frame.percents[0] + panel.frame.percents[2]));
 			percent = Math.round(CENT * (((float) (p.x - x))/totalWidth));
-			panel.frame.percents[1] = (percent > 0 ? (percent < pTotal ? percent : pTotal - (CENT/100)) : (CENT/100));
+			panel.frame.percents[1] = (percent > 0 ? (percent < pTotal ? percent : pTotal - ONE) : ONE);
 			panel.frame.percents[2] = (resize ? pTotal - panel.frame.percents[1] : panel.frame.percents[2]);
 
 		}  else if (data) {
 			x = ResizerPanel.shift + sysWidth + cacheWidth;
 			pTotal = CENT - (panel.frame.percents[0] + panel.frame.percents[1]);
 			percent = Math.round(CENT * (((float) (p.x - x))/totalWidth));
-			panel.frame.percents[2] = (percent > 0 ? (percent < pTotal ? percent : pTotal - (CENT/100)) : (CENT/100));
+			panel.frame.percents[2] = (percent > 0 ? (percent < pTotal ? percent : pTotal - ONE) : ONE);
 		}
 
 		changed = (Util.getPercent(panel.frame.percents[0]) != Util.getPercent(panel.frame.iniPercents[0]) ||

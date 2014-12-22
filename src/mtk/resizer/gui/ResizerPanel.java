@@ -6,6 +6,7 @@ import java.awt.Graphics2D;
 import javax.swing.JPanel;
 
 import mtk.resizer.ctrl.ResizerListener;
+import mtk.resizer.util.Util;
 import static mtk.resizer.util.Util.CENT;
 
 public class ResizerPanel extends JPanel {
@@ -39,44 +40,40 @@ public class ResizerPanel extends JPanel {
 		int cacheWidth	= Math.round(frame.percents[1] * (totalWidth/((float) CENT)));
 		int dataWidth	= Math.round(frame.percents[2] * (totalWidth/((float) CENT)));
 		int fatWidth	= totalWidth - (sysWidth + cacheWidth + dataWidth);
-		int x = 0, percent;
+		int x = 0;
 
 		// ANDROID partition
 		x += 0;
-		percent = Math.round(frame.percents[0] * 100f/CENT);
 		g2.setColor(Color.CYAN);
 		g2.fill3DRect(x + shift, shift, sysWidth, height, true);
 		g2.setColor(Color.BLACK);
 		g2.drawRect(x + shift, shift, sysWidth, height);
-		g2.drawString(percent + "%", x + sysWidth/2, shift + 4 + height/2);
+		g2.drawString(Util.getPercent(frame.percents[0]) + "%", x + sysWidth/2, shift + 4 + height/2);
 
 		// CACHE partition
 		x += sysWidth;
-		percent = Math.round(frame.percents[1] * 100f/CENT);
 		g2.setColor(Color.YELLOW);
 		g2.fill3DRect(x + shift, shift, cacheWidth, height, true);
 		g2.setColor(Color.BLACK);
 		g2.drawRect(x + shift, shift, cacheWidth, height);
-		g2.drawString(percent + "%", x + cacheWidth/2, shift + 4 + height/2);
+		g2.drawString(Util.getPercent(frame.percents[1]) + "%", x + cacheWidth/2, shift + 4 + height/2);
 
 		// USRDATA partition
 		x += cacheWidth;
-		percent = Math.round(frame.percents[2] * 100f/CENT);
 		g2.setColor(Color.BLUE);
 		g2.fill3DRect(x + shift, shift, dataWidth, height, true);
 		g2.setColor(Color.BLACK);
 		g2.drawRect(x + shift, shift, dataWidth, height);
 		g2.setColor(Color.WHITE);
-		g2.drawString(percent + "%", x + dataWidth/2, shift + 4 + height/2);
+		g2.drawString(Util.getPercent(frame.percents[2]) + "%", x + dataWidth/2, shift + 4 + height/2);
 
 		// FAT partition
 		x += dataWidth;
-		percent = Math.round((CENT - (frame.percents[0] + frame.percents[1] + frame.percents[2])) * 100f/CENT);
 		g2.setColor(Color.GREEN);
 		g2.fill3DRect(x + shift, shift, fatWidth, height, true);
 		g2.setColor(Color.BLACK);
 		g2.drawRect(x + shift, shift, fatWidth, height);
-		g2.drawString(percent + "%", x + fatWidth/2, shift + 4 + height/2);
+		g2.drawString(100 - (Util.getPercent(frame.percents[0]) + Util.getPercent(frame.percents[1]) + Util.getPercent(frame.percents[2])) + "%", x + fatWidth/2, shift + 4 + height/2);
 
 		frame.refreshSize();
 	}
