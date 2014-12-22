@@ -2,7 +2,7 @@ package mtk.resizer.main;
 
 import javax.swing.JFrame;
 
-import mtk.resizer.gui.JMTKDataResizer;
+import mtk.resizer.gui.JMTKResizer;
 
 public class Main {
 
@@ -16,13 +16,14 @@ public class Main {
 											   "javax.swing.plaf.nimbus.NimbusLookAndFeel"};
 		*/
 
-    	final JMTKDataResizer display = new JMTKDataResizer();
-		display.applyLookAndFeel(-1);
+    	final JMTKResizer display = new JMTKResizer();
+		display.applyLookAndFeel();
     	display.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
     	display.init();
     	display.validate();
-    	display.pack();
+    	//display.pack();
+    	display.setSize(706, 320);
     	display.setVisible(true);
 	}
 }

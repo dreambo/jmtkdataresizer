@@ -4,9 +4,6 @@ import java.io.IOException;
 
 public interface IBootRecord {
 
-	public final static String DATA = "DATA";
-	public final static String FAT  = "FAT";
-
 	public final static String BOOT_SIGN = "55AA";
 	public final static int PARTS_OFFSET = 0x1BE;
 	public final static int   PART_START = 0x008;

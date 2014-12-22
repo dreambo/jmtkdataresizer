@@ -5,11 +5,11 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 import mtk.resizer.br.BootRecord;
+import mtk.resizer.util.Util;
 
 public abstract class Scatter implements IScatter {
 
@@ -23,19 +23,25 @@ public abstract class Scatter implements IScatter {
 	protected String platform;
 	protected String project;
 	protected String storage;
-	protected String block_size;
+	public String block_size;
 
-	protected List<Info> infos = new ArrayList<Info>();
+	protected Map<String, Info> infos = new LinkedHashMap<String, Info>();
 
 	public boolean isComplete() {
 
-		return (getInfo(DATA) != null && getInfo(FAT) != null && getInfo(MBR) != null);
+		boolean sys		= (getInfo(Util.SYS) 	!= null);
+		boolean cache	= (getInfo(Util.CACHE) != null);
+		boolean data	= (getInfo(Util.DATA) 	!= null);
+		boolean fat		= (getInfo(Util.FAT)  	!= null);
+		boolean mbr		= (getInfo(Util.MBR)  	!= null);
+
+		return sys && cache && data && fat && mbr;
 	}
 
 	@Override
 	public String toString() {
 
-		String str = file.getAbsolutePath();
+		String str = file.getAbsolutePath()		+ NL;
 		str += PLATFORM		+ " " + platform	+ NL +
 			   PROJECT		+ " " + project		+ NL +
 			   STORAGE		+ " " + storage		+ NL +
@@ -43,9 +49,10 @@ public abstract class Scatter implements IScatter {
 
 		str += NL;
 
-		for (Info nfo: this.infos) {
-			str += nfo.toString();
-			str += NL;
+		for (String type: infos.keySet()) {
+			Info nfo = infos.get(type);
+			str += PARTITION_NAME + type + NL;
+			str += nfo.toString() + NL;
 		}
 
 		return str;
@@ -73,7 +80,7 @@ public abstract class Scatter implements IScatter {
 
 	public void writeMod() throws IOException {
 
-		File modFile = new File(file.getAbsolutePath().replaceAll("(?i)\\.txt", "_mod.txt"));
+		File modFile = new File(file.getAbsolutePath().replaceAll("(?i)\\.txt", "_MOD.txt"));
 
 		if (modFile.exists() && !modFile.delete()) {
 			System.out.println("Error: can not write file: " + modFile);
@@ -102,11 +109,11 @@ public abstract class Scatter implements IScatter {
 			Map<Integer, BootRecord> part = parts.get(type);
 			File file = ((BootRecord) part.values().toArray()[0]).BR;
 			name = file.getName().toUpperCase();
-			if (name.contains(MBR)) {
+			if (name.contains(Util.MBR)) {
 				changeMBR = true;
-			} else if (name.contains(EBR1)) {
+			} else if (name.contains(Util.EBR1)) {
 				changeEBR1 = true;
-			} else if (name.contains(EBR2)) {
+			} else if (name.contains(Util.EBR2)) {
 				changeEBR2 = true;
 			}
 		}
@@ -127,7 +134,7 @@ public abstract class Scatter implements IScatter {
 	 */
 	public long getMBRStart() {
 
-		Info info = getInfo(MBR);
+		Info info = getInfo(Util.MBR);
 		String hex;
 
 		return (info != null && (hex = info.physical_start_addr) != null ? Long.valueOf(hex.substring(2), 16) : 0);
@@ -135,7 +142,7 @@ public abstract class Scatter implements IScatter {
 
 	public long getDataStart() {
 
-		Info info = getInfo(DATA);
+		Info info = getInfo(Util.DATA);
 		String hex;
 
 		return (info != null && (hex = info.physical_start_addr) != null ? Long.valueOf(hex.substring(2), 16) : 0);
@@ -143,7 +150,7 @@ public abstract class Scatter implements IScatter {
 
 	public long getFatStart() {
 
-		Info info = getInfo(FAT);
+		Info info = getInfo(Util.FAT);
 		String hex;
 
 		return (info != null && (hex = info.physical_start_addr) != null ? Long.valueOf(hex.substring(2), 16) : 0);
@@ -155,7 +162,7 @@ public abstract class Scatter implements IScatter {
 			return dataSize;
 		}
 
-		Info info = getInfo(DATA);
+		Info info = getInfo(Util.DATA);
 		String hex;
 
 		dataSize = ((hex = info.partition_size) != null ? Long.valueOf(hex.substring(2), 16) : 0);
@@ -168,7 +175,7 @@ public abstract class Scatter implements IScatter {
 
 	public long getFatSize() {
 
-		Info info = getInfo(FAT);
+		Info info = getInfo(Util.FAT);
 		String hex;
 
 		return (info != null && (hex = info.partition_size) != null ? Long.valueOf(hex.substring(2), 16) : 0);
@@ -181,36 +188,83 @@ public abstract class Scatter implements IScatter {
 
 	public String getMBR() {
 
-		Info info = getInfo(MBR);
+		Info info = getInfo(Util.MBR);
 
 		return (info != null ? info.file_name : null);
 	}
 
 	public String getEBR1() {
 
-		Info info = getInfo(EBR1);
+		Info info = getInfo(Util.EBR1);
 
 		return (info != null ? info.file_name : null);
 	}
 
 	public String getEBR2() {
 
-		Info info = getInfo(EBR2);
+		Info info = getInfo(Util.EBR2);
 
 		return (info != null ? info.file_name : null);
 	}
 
 	private Info getInfo(String type) {
-		for (Info info: infos) {
-			if (info.partition_name != null && info.partition_name.toUpperCase().contains(type)) {
-				return info;
-			}
-		}
 
-		return null;
+		return infos.get(type);
 	}
 
-	public List<Info> getInfos() {
+	public Map<String, Info> getInfos() {
 		return infos;
+	}
+
+
+	/**
+	 * make changes in the scatter, with this values
+	 * @param vals : ex {"0x123", "0x123", "0x80000", "EBR1_MOD"} linear start, physical start, size and file name
+	 * @throws IOException
+	 */
+	public void modify(Map<String, String[]> vals) {
+
+		String[] lines = modScatter.toString().split(NL);
+		StringBuffer newScatter = new StringBuffer();
+		String name = null;
+
+		for (String line: lines) {
+			for (String type: vals.keySet()) {
+
+				if (line.contains(PARTITION_NAME)) {
+					name = line.substring(line.indexOf(PARTITION_NAME) + PARTITION_NAME.length()).trim();
+	
+				} else if (line.contains(LINEAR_START_ADDR)) {
+					if (type.equalsIgnoreCase(name) && vals.get(type)[0] != null) {
+						String linear_start_addr = line.substring(line.indexOf(LINEAR_START_ADDR) + LINEAR_START_ADDR.length()).trim();
+						line = line.replace(linear_start_addr, vals.get(type)[0]);
+					}
+	
+				} else if (line.contains(PHYSICAL_START_ADDR)) {
+					if (type.equalsIgnoreCase(name) && vals.get(type)[1] != null) {
+						String physical_start_addr = line.substring(line.indexOf(PHYSICAL_START_ADDR) + PHYSICAL_START_ADDR.length()).trim();
+						line = line.replace(physical_start_addr, vals.get(type)[1]);
+					}
+	
+				} else if (line.contains(PARTITION_SIZE)) {
+					if (type.equalsIgnoreCase(name) && vals.get(type)[2] != null) {
+						String partition_size = line.substring(line.indexOf(PARTITION_SIZE) + PARTITION_SIZE.length()).trim();
+						line = line.replace(partition_size, vals.get(type)[2]);
+					}
+	
+				} else if (line.contains(FILE_NAME)) {
+					if (type.equalsIgnoreCase(name) && vals.get(type)[3] != null) {
+						String file_name = line.substring(line.indexOf(FILE_NAME) + FILE_NAME.length()).trim();
+						line = line.replace(file_name, vals.get(type)[3]);
+					}
+				} 
+	
+				modScatter.append(line + NL);
+			}
+
+			newScatter.append(line + NL);
+		}
+
+		modScatter = newScatter;
 	}
 }
