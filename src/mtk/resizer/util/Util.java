@@ -4,6 +4,9 @@ import java.awt.Color;
 
 public class Util {
 
+	public static final long MB = 0x100000;		// 1MB =    1048576 Byte;
+	public static final long GB = 0x40000000;	// 1GB = 1073741824 Byte;
+
 	public final static long BPS = 0x200;
 	public final static int CENT = 0x200 * 100;
 	public static int		  BS = 0x20000;

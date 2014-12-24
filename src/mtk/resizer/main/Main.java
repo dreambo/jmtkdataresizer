@@ -23,7 +23,7 @@ public class Main {
     	display.init();
     	display.validate();
     	//display.pack();
-    	display.setSize(706, 320);
+    	display.setSize(710, 350);
     	display.setVisible(true);
 	}
 }

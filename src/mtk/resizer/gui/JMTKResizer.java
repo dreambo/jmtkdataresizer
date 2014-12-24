@@ -30,7 +30,7 @@ public class JMTKResizer extends JFrame {
 
 	public int look = -1;
 
-	public final static String ABOUT = "JMTKResizer v2.0";
+	public final static String ABOUT = "JMTKResizer v2.1 by boudhaim@gmail.com";
 
 	public int[] iniPercents = new int[] {5000, 6000, 8000};
 	public int[] percents	 = new int[] {5000, 6000, 8000};
@@ -162,13 +162,16 @@ public class JMTKResizer extends JFrame {
 		jtabPan.addTab("Log", jsLog);
 		// Help Tab
 		jtabPan.addTab("Help", jpTabHelp = new JPanel(new GridLayout()));
-		JTextArea help = new JTextArea("\nTo modify the sizes of your partitions :\n\n");
+		JTextArea help = new JTextArea(ABOUT + "\n\n");
+		help.setText(help.getText() + "To modify the sizes of your partitions :\n\n");
+		help.setText(help.getText() + "0- Enter recovery mode and do a full backup\n");
 		help.setText(help.getText() + "1- In MtkDroidTools, do a backup for your phone and create SPFlashTool files\n");
 		help.setText(help.getText() + "2- Open the scatter created in 1 with this program\n");
 		help.setText(help.getText() + "3- First, disable the partitions you do not want to resize, with the samll colored buttons\n");
-		help.setText(help.getText() + "4- Adjust the sizes you want with the mouse\n");
-		help.setText(help.getText() + "5- Apply changes and flash the modded scatter in SPFlashTool\n");
-		help.setText(help.getText() + "6- the new scatter is in the same dir: MT65XX_Android_scatter_MOD.txt\n\n");
+		help.setText(help.getText() + "4- Adjust the sizes you want with the mouse and apply changes\n");
+		help.setText(help.getText() + "5- the new scatter is in the same dir: MT65XX_Android_scatter_MOD.txt\n");
+		help.setText(help.getText() + "6- Do a \"firmware upgrade\" in SPFlashTool and this modded scatter\n");
+		help.setText(help.getText() + "7- Enter the recovery mode and do a full restore\n\n");
 		help.setText(help.getText() + "If the Apply button is disabled, see the log tab:\n");
 		help.setText(help.getText() + "In general your scatter is incompatible or you do not have the size of FAT in the scatter\n");
 		help.setText(help.getText() + "Please use MTKdroidTools to have this information and add it manualy to your scatter\n");
@@ -221,7 +224,7 @@ public class JMTKResizer extends JFrame {
 	}
 
     private String getSize(int percent) {
-    	double size = (ActionListener.totalSize * percent/((float) CENT))/ActionListener.GB;
+    	double size = (ActionListener.totalSize * percent/((float) CENT))/Util.GB;
     	NumberFormat formatter = new DecimalFormat("00.00");
 
     	return formatter.format(Math.round(size * ((float) CENT))/((float) CENT)) + " GB";
@@ -229,9 +232,9 @@ public class JMTKResizer extends JFrame {
 
     public void refreshSize() {
 
-    	jlSys.setText("System: "  + getSize(percents[0]));
-		jlCache.setText("Cache: " + getSize(percents[1]));
-		jlData.setText("Data: "   + getSize(percents[2]));
-		jlFat.setText("Storage: " + getSize(CENT - (percents[0] + percents[1] + percents[2])));
+    	jlSys  .setText("System: "  + getSize(percents[0]));
+		jlCache.setText("Cache: "	+ getSize(percents[1]));
+		jlData .setText("Data: "	+ getSize(percents[2]));
+		jlFat  .setText("Storage: "	+ getSize(CENT - (percents[0] + percents[1] + percents[2])));
 	}
 }

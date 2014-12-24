@@ -29,12 +29,9 @@ public class ActionListener implements java.awt.event.ActionListener {
 
 	private String DEFAULT_DIR = "/media/dreambox/WIN8/Users/SONY/Desktop/Tools/MTK/MtkDroidTools/backups";
 
-	//public static final long MB = 0x100000;		// 1MB =    1048576 Byte;
-	public static final long GB = 0x40000000;		// 1GB = 1073741824 Byte;
-
 	private JMTKResizer display;
 
-	public static long totalSize = 8 * GB;	// initial total size
+	public static long totalSize = 8 * Util.GB;	// initial total size
 
 	private static long sysSize;
 	private static long cacheSize;
@@ -217,7 +214,7 @@ public class ActionListener implements java.awt.event.ActionListener {
 				// initialise the block size, if exists
 				if (scatter.block_size != null && scatter.block_size.startsWith("0x")) {
 					int blockSize = Integer.valueOf(scatter.block_size.substring(2), 16);
-					BS = (blockSize % 512 == 0 ? blockSize : BS);
+					BS = (blockSize > 0 && blockSize % 512 == 0 ? blockSize : BS);
 				}
 
 				display.jtScatFile.setText(name);
@@ -230,7 +227,8 @@ public class ActionListener implements java.awt.event.ActionListener {
 				dataSize	= Long.valueOf(scatter.getInfos().get(Util.DATA).partition_size.substring(2), 16);
 				fatSize		= Long.valueOf(scatter.getInfos().get(Util.FAT).partition_size.substring(2), 16);
 
-				totalSize = sysSize + cacheSize + dataSize + fatSize;
+				totalSize	= sysSize + cacheSize + dataSize + fatSize;
+
 		    	display.percents[0] = display.iniPercents[0] = Math.round(CENT * (  sysSize /((float) totalSize)));
 		    	display.percents[1] = display.iniPercents[1] = Math.round(CENT * (cacheSize /((float) totalSize)));
 		    	display.percents[2] = display.iniPercents[2] = Math.round(CENT * ( dataSize /((float) totalSize)));
