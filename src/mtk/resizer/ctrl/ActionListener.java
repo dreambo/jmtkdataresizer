@@ -1,9 +1,13 @@
 package mtk.resizer.ctrl;
 
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.event.ActionEvent;
 import java.io.File;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import javax.swing.JButton;
 import javax.swing.JFileChooser;
@@ -12,40 +16,37 @@ import javax.swing.JTable;
 import javax.swing.filechooser.FileFilter;
 
 import mtk.resizer.br.BootRecord;
-import mtk.resizer.gui.JMTKDataResizer;
+import mtk.resizer.gui.JMTKResizer;
 import mtk.resizer.scatter.IScatter;
+import mtk.resizer.scatter.IScatter.Info;
 import mtk.resizer.scatter.Scatter;
 import mtk.resizer.scatter.ScatterFactory;
-
+import mtk.resizer.util.Util;
+import static mtk.resizer.util.Util.CENT;
+import static mtk.resizer.util.Util.BS;
 
 public class ActionListener implements java.awt.event.ActionListener {
 
-	private String DEFAULT_DIR = "C:/Users/SONY/Desktop/Tools/MTK/MtkDroidTools/backups";
+	private String DEFAULT_DIR = "/media/dreambox/WIN8/Users/SONY/Desktop/Tools/MTK/MtkDroidTools/backups";
 
-	private static final long MB = 0x100000;	// 1MB = 1048576 Byte;
-	private static final long GB = 0x40000000;	// 1GB = 1073741824 Byte;
+	//public static final long MB = 0x100000;		// 1MB =    1048576 Byte;
+	public static final long GB = 0x40000000;		// 1GB = 1073741824 Byte;
 
-	private int look;
-	private int initPercent;
-	private int dataPercent;
-	private JMTKDataResizer display;
+	private JMTKResizer display;
 
-	private long totalSize;
+	public static long totalSize = 8 * GB;	// initial total size
+
+	private static long sysSize;
+	private static long cacheSize;
+	private static long dataSize;
+	private static long fatSize;
 
     private static Scatter scatter;
     private static BootRecord MBR;
     private static BootRecord EBR1;
     private static BootRecord EBR2;
 
-	private boolean enableApply = false;
-	
-	
-	
-	public void setDataPercent(int dataPercent) {
-		this.dataPercent = dataPercent;
-	}
-
-	public ActionListener(JMTKDataResizer display) {
+	public ActionListener(JMTKResizer display) {
 		this.display = display;
 	}
 
@@ -58,210 +59,302 @@ public class ActionListener implements java.awt.event.ActionListener {
 			System.exit(0);
 		}
 
-		if (source.getText().equals("Theme")) {
-			look = display.applyLookAndFeel(++look);
-
-		} else if (source.getText().equals("Reset")) {
-			initValues();
-			display.jpResizer.setDataPercent(dataPercent);
-			refreshSize();
-			display.jpResizer2.repaint();
-			display.reset.setEnabled(false);
-			display.apply.setEnabled(false);
+		if (source.getText().equals("...")) {
+			browseForScatter();
 
 		} else if (source.getText().equals("Apply")) {
-			display.reset.setEnabled(false);
-			display.apply.setEnabled(false);
-			initPercent = dataPercent;
-			long newDataSize = MB * Math.round((totalSize * dataPercent/100d)/MB);
-			long newFatSize  = totalSize - newDataSize;
-	    	addLog("newDataSize=" + newDataSize);
-	    	addLog("newFatSize="  + newFatSize);
-
-	    	scatter.setNewSizes(newDataSize);
-	    	scatter.setNewBR(BootRecord.parts);
-
-	    	try {
-	    		scatter.writeMod();
-	    		scatter.load();
-	    		BootRecord.writeParts((newDataSize - scatter.getDataSize())/BootRecord.BPS);
-	    	} catch(Exception ex) {
-	    		ex.printStackTrace();
-	    	}
-
-		} else if (source == display.jbPlusData) {
-			setPercent(dataPercent + 1);
-			display.apply.setEnabled(enableApply && dataPercent != initPercent);
-			display.reset.setEnabled(dataPercent != initPercent);
-			display.jpResizer.setDataPercent(dataPercent);
-			refreshSize();
+			applyChanges();
+			
+		} else if (source.getText().equals("Reset")) {
+			initValues();
+			display.refreshSize();
 			display.jpResizer2.repaint();
+			display.jbReset.setEnabled(false);
+			display.jbApply.setEnabled(false);
 
-		} else if (source == display.jbPlusStor) {
-			setPercent(dataPercent - 1);
-			display.apply.setEnabled(enableApply && dataPercent != initPercent);
-			display.reset.setEnabled(dataPercent != initPercent);
-			display.jpResizer.setDataPercent(dataPercent);
-			refreshSize();
-			display.jpResizer2.repaint();
+		} else if (source.getText().equals("Theme")) {
+				display.look++;
+				display.applyLookAndFeel();
 
-		} else if (source.getText().equals("...")) {
-
-			JFileChooser jfc = new JFileChooser(DEFAULT_DIR);
-
-			jfc.setFileFilter(new FileFilter() {
-				
-				@Override
-				public String getDescription() {
-					return "*scatter*txt";
-				}
-				
-				@Override
-				public boolean accept(File f) {
-					return f.getName().toUpperCase().contains("SCATTER") ||
-						   f.getName().toUpperCase().endsWith("TXT") ||
-						   f.isDirectory();
-				}
-			});
-
-			String name = null;
-			if (JFileChooser.APPROVE_OPTION == jfc.showOpenDialog(display)) try {
-
-				File selectedFile = jfc.getSelectedFile();
-				DEFAULT_DIR = selectedFile.getParent();
-				name = selectedFile.getParentFile().getName() + "/" + selectedFile.getName();
-				scatter = ScatterFactory.createScatter(selectedFile);
-				display.jpTabScatter.removeAll();
-
-				if (scatter.isComplete()) {
-
-					addLog("");
-					addLog(scatter.toString());
-
-					display.jtScatFile.setText(name);
-					createScatterTable(scatter);
-					display.jbPlusData.setEnabled(true);
-					display.jbPlusStor.setEnabled(true);
-					display.reset.setEnabled(false);
-					display.apply.setEnabled(false);
-
-			    	long dataSize = scatter.getDataSize();
-			    	totalSize = scatter.getTotalSize();
-
-			    	// init
-			    	BootRecord.offsetMBR = scatter.getMBRStart();
-			    	BootRecord.parts.clear();
-
-			    	long dataStart = scatter.getDataStart()/BootRecord.BPS;
-			    	long fatStart  =  scatter.getFatStart()/BootRecord.BPS;
-
-			    	MBR  = (scatter.getMBR()  == null ? null : new BootRecord(new File(DEFAULT_DIR, scatter.getMBR()),  null));
-			    	EBR1 = (scatter.getEBR1() == null ? null : new BootRecord(new File(DEFAULT_DIR, scatter.getEBR1()), MBR));
-			    	EBR2 = (scatter.getEBR2() == null ? null : new BootRecord(new File(DEFAULT_DIR, scatter.getEBR2()), MBR));
-
-			    	long offsetEBR1 = 0;
-			    	if (MBR != null) MBR.detectParts(dataStart, fatStart, -1, -1);
-			    	if (BootRecord.parts.size() != 2 && EBR1 != null) {
-				    	offsetEBR1 = EBR1.getOffset(true);
-				    	EBR1.detectParts(dataStart, fatStart, offsetEBR1, -1);
-			    	}
-			    	if (BootRecord.parts.size() != 2 && EBR2 != null) {
-				    	long offsetEBR2 = EBR2.getOffset(false);
-				    	if (offsetEBR2 == 0) {
-				    		EBR2.setParent(EBR1);
-				    		offsetEBR2 = EBR2.getOffset(true);
-				    	}
-			    		EBR2.detectParts(dataStart, fatStart, offsetEBR1, offsetEBR2);
-			    	}
-
-			    	boolean sizesOk = (totalSize > dataSize);
-			    	boolean partsOk = (BootRecord.parts.size() == 2);
-
-			    	if (!sizesOk) {
-			    		addLog("FAT and DATA sizes must be present in the scatter file!");
-			    		addLog("Please check your scatter (it is made by MtkDroiTools ?)");
-			    		addLog("You can manualy add DATA and FAT sizes in the scatter using MtkDroiTools");
-			    	}
-
-			    	if (!partsOk) {
-			    		addLog("The DATA and FAT partitions must be found!");
-			    		addLog("Please check your scatter, MBR, ENR1 and EBR2 files");
-			    	}
-
-			    	enableApply = (partsOk && sizesOk);
-
-			    	addLog("Partitions: " + BootRecord.parts);
-			    	addLog("dataSize=" +  dataSize);
-			    	addLog("fatSize="  + (totalSize - dataSize));
-
-			    	setPercent((int) Math.round(100f * (dataSize /((float) totalSize))));
-			    	initPercent = dataPercent;
-					display.jpResizer.setDataPercent(dataPercent);
-			    	refreshSize();
-					display.jpResizer2.repaint();
-
-				} else {
-					addLog("Not a valid scatter file: " + name);
-					JOptionPane.showMessageDialog(display, name + " is not a valid scatter!");
-					display.jbPlusData.setEnabled(false);
-					display.jbPlusStor.setEnabled(false);
-					display.jtScatFile.setText("");
-				}
-			} catch(Exception ex) {
-				ex.printStackTrace();
-				addLog("Not a readeable file: " + name);
-				JOptionPane.showMessageDialog(display, name + " is not readeable or not valid!");
-				display.jbPlusData.setEnabled(false);
-				display.jbPlusStor.setEnabled(false);
-				display.jtScatFile.setText("");
-			};
+		} else {
+			handleResizeButtons(source);
 		}
 	}
 
-    private void initValues() {
-    	dataPercent = initPercent;
-    }
+    private void applyChanges() {
 
-    private void setPercent(int percent) {
-    	dataPercent = (percent < 5 ? 5 : (percent > 95 ? 95 : percent));
-    }
+    	boolean sysChange	= (Util.getPercent(display.percents[0]) != Util.getPercent(display.iniPercents[0]));
+    	boolean cacheChange = (Util.getPercent(display.percents[1]) != Util.getPercent(display.iniPercents[1]));
+    	boolean dataChange	= (Util.getPercent(display.percents[2]) != Util.getPercent(display.iniPercents[2]));
+    	//boolean fatChange	= ((display.percents[0] + display.percents[1] + display.percents[2]) != (display.iniPercents[0] + display.iniPercents[1] + display.iniPercents[2]));
 
-    private String getSize(int percent) {
-    	double size = (totalSize * percent/100f)/GB;
+		long newSysSize		= (sysChange	? BS * Math.round((totalSize * display.percents[0]/((double) CENT))/BS) : sysSize);
+		long newCacheSize	= (cacheChange	? BS * Math.round((totalSize * display.percents[1]/((double) CENT))/BS) : cacheSize);
+		long newDataSize	= (dataChange	? BS * Math.round((totalSize * display.percents[2]/((double) CENT))/BS) : dataSize);
+		long newFatSize		= totalSize - (newSysSize + newCacheSize + newDataSize);
+		//long newFatSize		= (fatChange	? (totalSize - (newSysSize + newCacheSize + newDataSize))	 : fatSize);
+		/*
+		long newSysSize		= MB * Math.round((totalSize * display.percents[0]/((double) CENT))/MB);
+		long newCacheSize	= MB * Math.round((totalSize * display.percents[1]/((double) CENT))/MB);
+		long newDataSize	= MB * Math.round((totalSize * display.percents[2]/((double) CENT))/MB);
+		long newFatSize		= totalSize - (newSysSize + newCacheSize + newDataSize);
+		*/
+		addLog("After:");
+		addLog("newSysSize="	+ newSysSize	+ " byte (" + Util.getPercent(display.percents[0]) + "%)");
+    	addLog("newCacheSize="  + newCacheSize	+ " byte (" + Util.getPercent(display.percents[1]) + "%)");
+    	addLog("newDataSize="	+ newDataSize	+ " byte (" + Util.getPercent(display.percents[2]) + "%)");
+    	addLog("newFatSize="	+ newFatSize	+ " byte (" + Util.getPercent((CENT - (display.percents[0] + display.percents[1] + display.percents[2]))) + "%)");
 
-    	return Math.round(size * 100f)/100f + " GB";
+    	Map<String, String[]> vals = new LinkedHashMap<String, String[]>();
+    	Map<String, Long> diffs    = new LinkedHashMap<String, Long>();
+    	String nfos[], tmp0, tmp1;
+
+    	// SYS
+    	Info sysInfo = scatter.getInfos().get(Util.SYS);
+		nfos = new String[4];
+		nfos[0] = tmp0 = sysInfo.linear_start_addr;
+		nfos[1] = tmp1 = sysInfo.physical_start_addr;
+		nfos[2] = "0x" + Long.toHexString(newSysSize);
+		vals.put(Util.SYS, nfos);
+		diffs.put(Util.SYS, newSysSize - sysSize);
+
+    	// CACHE
+		nfos = new String[4];
+		nfos[0] = tmp0 = "0x" + Long.toHexString((Long.valueOf(tmp0.substring(2), 16) + newSysSize));
+		nfos[1] = tmp1 = "0x" + Long.toHexString((Long.valueOf(tmp1.substring(2), 16) + newSysSize));
+		nfos[2] = "0x" + Long.toHexString(newCacheSize);
+		vals.put(Util.CACHE, nfos);
+		diffs.put(Util.CACHE, newCacheSize - cacheSize);
+
+    	// DATA
+		nfos = new String[4];
+		nfos[0] = tmp0 = "0x" + Long.toHexString((Long.valueOf(tmp0.substring(2), 16) + newCacheSize));
+		nfos[1] = tmp1 = "0x" + Long.toHexString((Long.valueOf(tmp1.substring(2), 16) + newCacheSize));
+		nfos[2] = "0x" + Long.toHexString(newDataSize);
+		vals.put(Util.DATA, nfos);
+		diffs.put(Util.DATA, newDataSize - dataSize);
+
+    	// FAT
+		nfos = new String[4];
+		nfos[0] = "0x" + Long.toHexString((Long.valueOf(tmp0.substring(2), 16) + newDataSize));
+		nfos[1] = "0x" + Long.toHexString((Long.valueOf(tmp1.substring(2), 16) + newDataSize));
+		nfos[2] = "0x" + Long.toHexString(newFatSize);
+		vals.put(Util.FAT, nfos);
+		diffs.put(Util.FAT, newFatSize - fatSize);
+
+		// MBR, EBR1 and EBR2
+		List<BootRecord> bootRecords = new ArrayList<BootRecord>();
+    	for (String type: BootRecord.parts.keySet()) {
+
+    		Map<Integer, BootRecord> part = BootRecord.parts.get(type);
+
+    		for (BootRecord br: part.values()) {
+    			if (!bootRecords.contains(br)) {
+    				bootRecords.add(br);
+	    			nfos = new String[4];
+	    			nfos[3] = br.BR.getName() + "_MOD";
+	    			if (br.BR.getName().toUpperCase().contains(Util.MBR)) {
+	    				vals.put(Util.MBR, nfos);
+	    			} else if (br.BR.getName().toUpperCase().contains(Util.EBR1)) {
+	    				vals.put(Util.EBR1, nfos);
+	    			} else if (br.BR.getName().toUpperCase().contains(Util.EBR2)) {
+	    				vals.put(Util.EBR2, nfos);
+	    			}
+    			}
+    		}
+    	}
+
+    	try {
+    		// modify the scatter with this new values
+    		scatter.modify(vals);
+    		scatter.writeMod();
+
+    		BootRecord.writeParts(diffs);
+
+			display.jbReset.setEnabled(false);
+			display.jbApply.setEnabled(false);
+			display.iniPercents[0] = display.percents[0];
+			display.iniPercents[1] = display.percents[1];
+			display.iniPercents[2] = display.percents[2];
+    	} catch(Exception ex) {
+    		ex.printStackTrace();
+    	}
+	}
+
+	private void browseForScatter() {
+
+		JFileChooser jfc = new JFileChooser(DEFAULT_DIR);
+
+		jfc.setFileFilter(new FileFilter() {
+			
+			@Override
+			public String getDescription() {
+				return "*scatter*txt";
+			}
+
+			@Override
+			public boolean accept(File f) {
+				return f.getName().toUpperCase().contains("SCATTER") ||
+					   f.getName().toUpperCase().endsWith("TXT") ||
+					   f.isDirectory();
+			}
+		});
+
+		String name = null;
+		if (JFileChooser.APPROVE_OPTION == jfc.showOpenDialog(display)) try {
+
+			File selectedFile = jfc.getSelectedFile();
+			DEFAULT_DIR = selectedFile.getParent();
+			name = selectedFile.getParentFile().getName() + "/" + selectedFile.getName();
+			scatter = ScatterFactory.createScatter(selectedFile, true);
+			display.jpTabScatter.removeAll();
+
+			if (scatter.isComplete()) {
+
+				addLog("");
+				addLog(scatter.toString());
+
+				// initialise the block size, if exists
+				if (scatter.block_size != null && scatter.block_size.startsWith("0x")) {
+					int blockSize = Integer.valueOf(scatter.block_size.substring(2), 16);
+					BS = (blockSize % 512 == 0 ? blockSize : BS);
+				}
+
+				display.jtScatFile.setText(name);
+				createScatterTable(scatter);
+				display.jbReset.setEnabled(false);
+				display.jbApply.setEnabled(false);
+
+				sysSize		= Long.valueOf(scatter.getInfos().get(Util.SYS).partition_size.substring(2), 16);
+				cacheSize	= Long.valueOf(scatter.getInfos().get(Util.CACHE).partition_size.substring(2), 16);
+				dataSize	= Long.valueOf(scatter.getInfos().get(Util.DATA).partition_size.substring(2), 16);
+				fatSize		= Long.valueOf(scatter.getInfos().get(Util.FAT).partition_size.substring(2), 16);
+
+				totalSize = sysSize + cacheSize + dataSize + fatSize;
+		    	display.percents[0] = display.iniPercents[0] = Math.round(CENT * (  sysSize /((float) totalSize)));
+		    	display.percents[1] = display.iniPercents[1] = Math.round(CENT * (cacheSize /((float) totalSize)));
+		    	display.percents[2] = display.iniPercents[2] = Math.round(CENT * ( dataSize /((float) totalSize)));
+
+		    	// init
+		    	BootRecord.offsetMBR = scatter.getMBRStart();
+		    	BootRecord.parts.clear();
+
+		    	MBR  = (scatter.getMBR()  == null ? null : new BootRecord(new File(DEFAULT_DIR, scatter.getMBR()),  null));
+		    	EBR1 = (scatter.getEBR1() == null ? null : new BootRecord(new File(DEFAULT_DIR, scatter.getEBR1()), MBR));
+		    	EBR2 = (scatter.getEBR2() == null ? null : new BootRecord(new File(DEFAULT_DIR, scatter.getEBR2()), MBR));
+
+		    	Map<String, Long> offsets = new LinkedHashMap<String, Long>();
+		    	for (String type: scatter.getInfos().keySet()) {
+		    		if (!type.contains("BR")) {
+		    			long offset = Long.valueOf(scatter.getInfos().get(type).physical_start_addr.substring(2), 16);
+		    			offsets.put(type, offset);
+		    		}
+		    	}
+
+		    	long offsetEBR1 = 0;
+		    	if (MBR != null) MBR.detectParts(offsets, 0, 0);
+		    	if (BootRecord.parts.size() < 4 && EBR1 != null) {
+			    	offsetEBR1 = EBR1.getOffset(true);
+			    	EBR1.detectParts(offsets, offsetEBR1, 0);
+		    	}
+		    	if (BootRecord.parts.size() < 4 && EBR2 != null) {
+			    	long offsetEBR2 = EBR2.getOffset(false);
+			    	if (offsetEBR2 == 0) {
+			    		EBR2.setParent(EBR1);
+			    		offsetEBR2 = EBR2.getOffset(true);
+			    	}
+		    		EBR2.detectParts(offsets, offsetEBR1, offsetEBR2);
+		    	}
+
+		    	boolean sizesOk = (sysSize > 0 && cacheSize > 0 && dataSize > 0 && fatSize > 0);
+		    	boolean partsOk = (BootRecord.parts.size() == 4);
+
+		    	if (!sizesOk) {
+		    		addLog("FAT and DATA sizes must be present in the scatter file!");
+		    		addLog("Please check your scatter (it is made by MtkDroiTools ?)");
+		    		addLog("You can manualy add DATA and FAT sizes in the scatter using MtkDroiTools");
+		    	}
+
+		    	if (!partsOk) {
+		    		addLog("The DATA and FAT partitions must be found!");
+		    		addLog("Please check your scatter, MBR, EBR1 and EBR2 files");
+		    	}
+
+		    	display.scatterOK = (partsOk && sizesOk);
+		    	display.jbApply.setEnabled(false);
+		    	display.jbReset.setEnabled(false);
+
+		    	addLog("Partitions: "	+ BootRecord.parts);
+		    	addLog("totalSize="		+ totalSize	 + " byte (100%)");
+		    	addLog("Before: ");
+		    	addLog("sysSize="		+ sysSize	 + " byte (" + Util.getPercent(display.percents[0]) + "%)");
+		    	addLog("cacheSize="		+ cacheSize	 + " byte (" + Util.getPercent(display.percents[1]) + "%)");
+		    	addLog("dataSize="		+ dataSize	 + " byte (" + Util.getPercent(display.percents[2]) + "%)");
+		    	addLog("fatSize="		+ (totalSize - (sysSize + cacheSize + dataSize)) + " byte (" + Util.getPercent((CENT - (display.percents[0] + display.percents[1] + display.percents[2]))) + "%)");
+
+		    	display.refreshSize();
+				display.jpResizer2.repaint();
+
+			} else {
+				addLog("Not a valid scatter file: " + name);
+				JOptionPane.showMessageDialog(display, name + " is not a valid scatter!");
+				display.jtScatFile.setText("");
+			}
+		} catch(Exception ex) {
+			ex.printStackTrace();
+			addLog("Not a readeable file: " + name);
+			JOptionPane.showMessageDialog(display, name + " is not readeable or not valid!");
+			display.jtScatFile.setText("");
+		};
+	}
+
+	private void initValues() {
+    	display.percents[0] = display.iniPercents[0];
+    	display.percents[1] = display.iniPercents[1];
+    	display.percents[2] = display.iniPercents[2];
     }
 
 	private void addLog(String msg) {
 
 		if ("".equals(msg)) {
-			display.jtLog.setText(JMTKDataResizer.ABOUT + IScatter.NL + IScatter.NL);
+			display.jtLog.setText(JMTKResizer.ABOUT + IScatter.NL + IScatter.NL);
 		} else {
 			System.out.println(msg);
 			display.jtLog.setText(display.jtLog.getText() + IScatter.NL + msg);
 		}
 	}
 
-	private void refreshSize() {
-		display.jlData.setText(display.jlData.getText().replaceAll(":.*GB$", ": " + getSize(dataPercent)));
-		display.jlStor.setText(display.jlStor.getText().replaceAll(":.*GB$", ": " + getSize(100 - dataPercent)));
-	}
-
 	private void createScatterTable(Scatter scatter) {
 
-		List<Scatter.Info> infos = scatter.getInfos();
-		String[][] cells = new String[infos.size()][4];
-		for (int i = 0; i < infos.size(); i++) {
-			cells[i][0] = infos.get(i).partition_name; 
-			cells[i][1] = infos.get(i).file_name; 
-			cells[i][2] = infos.get(i).physical_start_addr; 
-			cells[i][3] = infos.get(i).partition_size;
+		Map<String, Scatter.Info> infos = scatter.getInfos();
+		String[][] cells = new String[infos.size()][5];
+		int i = 0;
+
+		for (String type: infos.keySet()) {
+			cells[i  ][0] = type; 
+			cells[i  ][1] = infos.get(type).file_name; 
+			cells[i  ][2] = infos.get(type).linear_start_addr; 
+			cells[i  ][3] = infos.get(type).physical_start_addr; 
+			cells[i++][4] = infos.get(type).partition_size;
 		}
 
-		JTable table = new JTable(cells, new String[] {IScatter.PARTITION_NAME, IScatter.FILE_NAME, IScatter.PHYSICAL_START_ADDR, IScatter.PARTITION_SIZE});
+		JTable table = new JTable(cells, new String[] {IScatter.PARTITION_NAME, IScatter.FILE_NAME, IScatter.LINEAR_START_ADDR, IScatter.PHYSICAL_START_ADDR, IScatter.PARTITION_SIZE});
 		table.setEnabled(false);
 		display.jpTabScatter.add(table.getTableHeader(), BorderLayout.NORTH);
 		display.jpTabScatter.add(table, BorderLayout.CENTER);
 		display.jpTabScatter.validate();
+	}
+
+	private void handleResizeButtons(Object source) {
+
+		if (source == display.jbSys) {
+			display.jbSys.setBackground(display.jbSys.getBackground() == Color.BLACK ? Util.SYSCOLOR : Color.BLACK);
+
+		} else if (source == display.jbCache) {
+			display.jbCache.setBackground(display.jbCache.getBackground() == Color.BLACK ? Util.CACHECOLOR : Color.BLACK);
+
+		} if (source == display.jbData) {
+			display.jbData.setBackground(display.jbData.getBackground() == Color.BLACK ? Util.DATACOLOR : Color.BLACK);
+		}
 	}
 }

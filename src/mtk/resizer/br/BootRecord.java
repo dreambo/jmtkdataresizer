@@ -11,6 +11,7 @@ import java.util.Map;
 
 import mtk.resizer.scatter.Scatter;
 import mtk.resizer.scatter.Scatter1;
+import mtk.resizer.util.Util;
 
 public class BootRecord implements IBootRecord {
 
@@ -48,7 +49,7 @@ public class BootRecord implements IBootRecord {
     		offsetEBR2 = EBR2.getOffset(true);
     	}
 
-    	System.out.println("offsetMBR=" + offsetMBR);
+    	System.out.println("offsetMBR="  + offsetMBR);
     	System.out.println("offsetEBR1=" + offsetEBR1);
     	System.out.println("offsetEBR2=" + offsetEBR2);
 	}
@@ -277,39 +278,80 @@ public class BootRecord implements IBootRecord {
 	 * @param newDataSize : new data size in byte
 	 * @param data : DATA or FAT
 	 */
-	public static void writeParts(long diff) throws IOException {
+	public static void writeParts(Map<String, Long> diffs) throws IOException {
 
-		for (String type: parts.keySet()) {
+		long sysDiffSize	= diffs.get(Util.SYS	)/BPS;
+		long cacheDiffSize	= diffs.get(Util.CACHE	)/BPS;
+		long dataDiffSize	= diffs.get(Util.DATA	)/BPS;
+		long fatDiffSize	= diffs.get(Util.FAT	)/BPS;
 
-			boolean data = DATA.equals(type); // is DATA partition ?
+		int partNb;
+		Map<Integer, BootRecord> part;
+		BootRecord br;
+		File file;
+		long diffStart;
 
-			// get the part of type
-			Map<Integer, BootRecord> part = parts.get(data ? DATA : FAT);
-			int partNb = (Integer) part.keySet().toArray()[0];
-			BootRecord br = part.get(partNb);
-			File file = br.BR;
-			long value = (data ? br.getPartSize(partNb) : br.getPartStart(partNb)) + diff;
-	
-			// patch the start or the size
-			br.writeSectors(partNb, !data, value);
-			br.writeToFile(new File(file.getAbsolutePath() + "_MOD"));
-		}
+		// SYS
+		part = parts.get(Util.SYS);
+		partNb = (Integer) part.keySet().toArray()[0];
+		br = part.get(partNb);
+		file = br.BR;
+		// patch the size
+		br.writeSectors(partNb, false, br.getPartSize(partNb) + sysDiffSize);
+		br.writeToFile(new File(file.getAbsolutePath() + "_MOD"));
+		diffStart = 0;
+
+		// CACHE
+		part = parts.get(Util.CACHE);
+		partNb = (Integer) part.keySet().toArray()[0];
+		br = part.get(partNb);
+		file = br.BR;
+		// patch the start and size
+		br.writeSectors(partNb, true, br.getPartStart(partNb) + sysDiffSize + diffStart);
+		br.writeSectors(partNb, false, br.getPartSize(partNb) + cacheDiffSize);
+		br.writeToFile(new File(file.getAbsolutePath() + "_MOD"));
+		diffStart += sysDiffSize;
+
+		// DATA
+		part = parts.get(Util.DATA);
+		partNb = (Integer) part.keySet().toArray()[0];
+		br = part.get(partNb);
+		file = br.BR;
+		// patch the start and size
+		br.writeSectors(partNb, true, br.getPartStart(partNb) + cacheDiffSize + diffStart);
+		br.writeSectors(partNb, false, br.getPartSize(partNb) + dataDiffSize);
+		br.writeToFile(new File(file.getAbsolutePath() + "_MOD"));
+		diffStart += cacheDiffSize;
+
+		// FAT
+		part = parts.get(Util.FAT);
+		partNb = (Integer) part.keySet().toArray()[0];
+		br = part.get(partNb);
+		file = br.BR;
+		// patch the start and size
+		br.writeSectors(partNb, true, br.getPartStart(partNb) + dataDiffSize + diffStart);
+		br.writeSectors(partNb, false, br.getPartSize(partNb) + fatDiffSize);
+		br.writeToFile(new File(file.getAbsolutePath() + "_MOD"));
 	}
 
-	public void detectParts(long offsetData, long offsetFat, long offsetEBR1, long offsetEBR2) throws IOException {
+	public void detectParts(Map<String, Long> offsets, long offsetEBR1, long offsetEBR2) throws IOException {
 
 		long offset, offsetEBR = offsetMBR;
 
-		offsetEBR += (offsetEBR1 > 0 ? offsetEBR1 : 0) + (offsetEBR2 > 0 ? offsetEBR2 : 0);
+		offsetEBR += (offsetEBR1 + offsetEBR2);
 
-		for (int i = 0; i < 4; i++) { // browse the 4 partitions in the partition table
+		for (String type: offsets.keySet()) {
 
-			offset   = offsetEBR + getPartStart(i);
+			long start = offsets.get(type);
 
-			if (getPartType(i) != 5 && (offsetData == offset || offsetFat == offset)) {
-				Map<Integer, BootRecord> part = new HashMap<Integer, BootRecord>();
-				part.put(i, this);
-				parts.put(offsetData == offset ? DATA : FAT, part);
+			for (int i = 0; i < 4 && getPartType(i) > 5; i++) { // browse the 4 partitions in the partition table
+
+				offset   = offsetEBR + getPartStart(i);
+				if (offset == start/BPS) {
+					Map<Integer, BootRecord> part = new HashMap<Integer, BootRecord>();
+					part.put(i, this);
+					parts.put(type, part);
+				}
 			}
 		}
 	}

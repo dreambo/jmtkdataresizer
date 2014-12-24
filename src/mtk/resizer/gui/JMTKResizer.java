@@ -4,8 +4,9 @@ package mtk.resizer.gui;
 import java.awt.BorderLayout;
 import java.awt.FlowLayout;
 import java.awt.GridLayout;
+import java.text.DecimalFormat;
+import java.text.NumberFormat;
 
-import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -20,77 +21,92 @@ import javax.swing.UIManager.LookAndFeelInfo;
 import javax.swing.border.EtchedBorder;
 
 import mtk.resizer.ctrl.ActionListener;
+import mtk.resizer.util.Util;
+import static mtk.resizer.util.Util.CENT;
 
-public class JMTKDataResizer extends JFrame {
+public class JMTKResizer extends JFrame {
 
 	private static final long serialVersionUID = 2L;
 
-	public final static String ABOUT = "JMTKDataResizer v1.0";
+	public int look = -1;
 
+	public final static String ABOUT = "JMTKResizer v2.0";
+
+	public int[] iniPercents = new int[] {5000, 6000, 8000};
+	public int[] percents	 = new int[] {5000, 6000, 8000};
+
+	public JLabel  jlSys;
+	public JLabel  jlCache;
+	public JLabel  jlData;
+	public JLabel  jlFat;
+	public JButton jbSys;
+	public JButton jbCache;
+	public JButton jbData;
+	public JButton jbFat;
+	public JButton jbApply;
+	public JButton jbReset;
+	public JTextArea  jtLog;
 	public JTextField jtScatFile;
-	public JLabel jlData;
-	public JLabel jlStor;
-	public JButton jbPlusData;
-	public JButton jbPlusStor;
-	public JButton apply;
-	public JButton reset;
-	public JTextArea jtLog;
 
     // main panels
+    public ResizerPanel jpResizer;
     public JPanel jpResizer2;
     public JPanel jpScatter;
-    public ResizerPanel jpResizer;
 
     // panels of tabs
     private JPanel jpTabResizer;
     public  JPanel jpTabScatter;
     private JPanel jpTabHelp;
 
+	public boolean scatterOK = false;
+
     public void init() throws Exception {
 
     	jpTabResizer = new JPanel(new GridLayout(2,1));
 
     	// the resizer panel
-    	jpResizer = new ResizerPanel();
+    	jpResizer = new ResizerPanel(this);
 
     	jpResizer2 = new JPanel(new GridLayout(2, 1));
     	//jpResizer.setBackground(Color.GRAY);
     	jpResizer2.setBorder(new EtchedBorder());
     	jpResizer2.add(jpResizer);
 
-    	jtScatFile = new JTextField("put here your scatter file (MT65XX_Android_scatter.txt)");
-		jtScatFile.setColumns(35);
-		jtScatFile.setEditable(false);
-    	jlData = new JLabel("Data: 4 GB");
-    	jlStor = new JLabel("Storage: 12 GB");
-    	jbPlusData = new JButton(new ImageIcon(JMTKDataResizer.class.getClassLoader().getResource("images/plus_blue.png")));
-    	jbPlusData.setEnabled(false);
-    	jbPlusStor = new JButton(new ImageIcon(JMTKDataResizer.class.getClassLoader().getResource("images/plus_green.png")));
-    	jbPlusStor.setEnabled(false);
-		apply = new JButton("Apply"); apply.setEnabled(false);
-		reset = new JButton("Reset"); reset.setEnabled(false);
-		jtLog = new JTextArea(ABOUT);
-
     	ActionListener buttonListener = new ActionListener(this);
 
+    	jtScatFile = new JTextField("put here your scatter file (MT65XX_Android_scatter.txt)");
+		jtScatFile.setColumns(40);
+		jtScatFile.setEditable(false);
+    	jlSys	= new JLabel();
+    	jlCache = new JLabel();
+    	jlData	= new JLabel();
+    	jlFat	= new JLabel();
+    	jbSys = new JButton(); jbSys.setToolTipText("Click here to enable/disable resize");
+    	jbSys.addActionListener(buttonListener); jbSys.setBackground(Util.SYSCOLOR);
+    	jbCache = new JButton(); jbCache.setToolTipText("Click here to enable/disable resize");
+    	jbCache.addActionListener(buttonListener); jbCache.setBackground(Util.CACHECOLOR);
+    	jbData = new JButton(); jbData.setToolTipText("Click here to enable/disable resize");
+    	jbData.addActionListener(buttonListener); jbData.setBackground(Util.DATACOLOR);
+    	jbFat = new JButton(); jbFat.setBackground(Util.FATCOLOR);
+		jbApply = new JButton("Apply"); jbApply.setEnabled(false);
+		jbReset = new JButton("Reset"); jbReset.setEnabled(false);
+		jtLog = new JTextArea(ABOUT);
+
 		// jpPlus panel
-		JPanel jpPlus = new JPanel(new GridLayout(1, 2));
-		//jpPlus.setBorder(new EtchedBorder());
-		JPanel jpPlusLeft  = new JPanel(new FlowLayout(FlowLayout.LEFT));
-		JPanel jpPlusRight = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-		// + Data
-		jpPlusLeft.add(jbPlusData);
-		jbPlusData.addActionListener(buttonListener);
-		jpPlusLeft.add(jlData);
-		// + Storage
-		jpPlusRight.add(jlStor);
-		jpPlusRight.add(jbPlusStor);
-		jbPlusStor.addActionListener(buttonListener);
+    	JPanel jpPlus = new JPanel(new FlowLayout(FlowLayout.CENTER));
+		// + ANDROID
+		jpPlus.add(jbSys);
+		jpPlus.add(jlSys);
+		// + CACHE
+		jpPlus.add(jbCache);
+		jpPlus.add(jlCache);
+		// + DATA
+		jpPlus.add(jbData);
+		jpPlus.add(jlData);
+		// + FAT
+		jpPlus.add(jbFat);
+		jpPlus.add(jlFat);
 		// add the panel plus
-		//jpPlusLeft.setBorder(new EtchedBorder());
-		//jpPlusRight.setBorder(new EtchedBorder());
-		jpPlus.add(jpPlusLeft);
-		jpPlus.add(jpPlusRight);
 		jpResizer2.add(jpPlus);
 		jpTabResizer.add(jpResizer2);
 
@@ -114,14 +130,14 @@ public class JMTKDataResizer extends JFrame {
 		jpButtons.add(exit);
 
 		//JButton apply = new JButton("Apply");
-		apply.setToolTipText("Apply the current change");
-		apply.addActionListener(buttonListener);
-		jpButtons.add(apply);
+		jbApply.setToolTipText("Apply the current change");
+		jbApply.addActionListener(buttonListener);
+		jpButtons.add(jbApply);
 
 		//JButton reset = new JButton("Reset");
-		reset.setToolTipText("Rest the initial values");
-		reset.addActionListener(buttonListener);
-		jpButtons.add(reset);
+		jbReset.setToolTipText("Rest the initial values");
+		jbReset.addActionListener(buttonListener);
+		jpButtons.add(jbReset);
 
 		JButton jbLook = new JButton("Theme");
 		jbLook.setToolTipText("Change the LookAndFeel");
@@ -146,12 +162,13 @@ public class JMTKDataResizer extends JFrame {
 		jtabPan.addTab("Log", jsLog);
 		// Help Tab
 		jtabPan.addTab("Help", jpTabHelp = new JPanel(new GridLayout()));
-		JTextArea help = new JTextArea("\nTo increase/decrease your DATA partition :\n\n");
+		JTextArea help = new JTextArea("\nTo modify the sizes of your partitions :\n\n");
 		help.setText(help.getText() + "1- In MtkDroidTools, do a backup for your phone and create SPFlashTool files\n");
-		help.setText(help.getText() + "2- Open the scatter created in 1 in this program\n");
-		help.setText(help.getText() + "3- Adjust the sizes you want with the PLUS buttons\n");
-		help.setText(help.getText() + "4- Apply changes and flash the modded scatter in SPFlashTool\n");
-		help.setText(help.getText() + "5- the new scatter is in the same dir: MT65XX_Android_scatter_MOD.txt\n\n");
+		help.setText(help.getText() + "2- Open the scatter created in 1 with this program\n");
+		help.setText(help.getText() + "3- First, disable the partitions you do not want to resize, with the samll colored buttons\n");
+		help.setText(help.getText() + "4- Adjust the sizes you want with the mouse\n");
+		help.setText(help.getText() + "5- Apply changes and flash the modded scatter in SPFlashTool\n");
+		help.setText(help.getText() + "6- the new scatter is in the same dir: MT65XX_Android_scatter_MOD.txt\n\n");
 		help.setText(help.getText() + "If the Apply button is disabled, see the log tab:\n");
 		help.setText(help.getText() + "In general your scatter is incompatible or you do not have the size of FAT in the scatter\n");
 		help.setText(help.getText() + "Please use MTKdroidTools to have this information and add it manualy to your scatter\n");
@@ -160,7 +177,7 @@ public class JMTKDataResizer extends JFrame {
 		add(jtabPan);
     }
 
-	public int applyLookAndFeel(int look) {
+	public void applyLookAndFeel() {
 		// UIManager.setLookAndFeel("com.pagosoft.plaf.PgsLookAndFeel");
     	// PlafOptions and PgsLookAndFeel provide static methods to do both of it:
     	//PlafOptions.setAsLookAndFeel();
@@ -194,14 +211,27 @@ public class JMTKDataResizer extends JFrame {
 
 		try {
     		UIManager.setLookAndFeel(infos[look].getClassName());
-    		setTitle(JMTKDataResizer.ABOUT + " - " + lookName);
+    		setTitle(JMTKResizer.ABOUT + " - " + lookName);
         	SwingUtilities.updateComponentTreeUI(this);
-    		pack();
+    		//pack();
 
     	} catch (Exception e) {
     		e.printStackTrace();
     	}
+	}
 
-		return look;
+    private String getSize(int percent) {
+    	double size = (ActionListener.totalSize * percent/((float) CENT))/ActionListener.GB;
+    	NumberFormat formatter = new DecimalFormat("00.00");
+
+    	return formatter.format(Math.round(size * ((float) CENT))/((float) CENT)) + " GB";
+    }
+
+    public void refreshSize() {
+
+    	jlSys.setText("System: "  + getSize(percents[0]));
+		jlCache.setText("Cache: " + getSize(percents[1]));
+		jlData.setText("Data: "   + getSize(percents[2]));
+		jlFat.setText("Storage: " + getSize(CENT - (percents[0] + percents[1] + percents[2])));
 	}
 }
