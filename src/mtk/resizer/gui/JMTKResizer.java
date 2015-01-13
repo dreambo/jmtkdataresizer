@@ -167,7 +167,7 @@ public class JMTKResizer extends JFrame {
 		help.setText(help.getText() + "0- Enter recovery mode and do a full backup\n");
 		help.setText(help.getText() + "1- In MtkDroidTools, do a backup for your phone and create SPFlashTool files\n");
 		help.setText(help.getText() + "2- Open the scatter created in 1 with this program\n");
-		help.setText(help.getText() + "3- First, disable the partitions you do not want to resize, with the samll colored buttons\n");
+		help.setText(help.getText() + "3- First, disable the partitions you do not want to resize, with the small colored buttons\n");
 		help.setText(help.getText() + "4- Adjust the sizes you want with the mouse and apply changes\n");
 		help.setText(help.getText() + "5- the new scatter is in the same dir: MT65XX_Android_scatter_MOD.txt\n");
 		help.setText(help.getText() + "6- Do a \"firmware upgrade\" in SPFlashTool and this modded scatter\n");

@@ -1,6 +1,8 @@
 package mtk.resizer.ctrl;
 
-import java.awt.Color;
+import static mtk.resizer.util.Util.CENT;
+import static mtk.resizer.util.Util.ONE;
+
 import java.awt.Cursor;
 import java.awt.Point;
 import java.awt.event.MouseAdapter;
@@ -8,11 +10,12 @@ import java.awt.event.MouseEvent;
 
 import mtk.resizer.gui.ResizerPanel;
 import mtk.resizer.util.Util;
-import static mtk.resizer.util.Util.CENT;
 
 public class ResizerListener extends MouseAdapter {
 
 	ResizerPanel panel;
+
+	private boolean[] resizes;
 
 	private int totalWidth = 0;
 	private boolean sys	   = false;
@@ -29,34 +32,33 @@ public class ResizerListener extends MouseAdapter {
 	public void mouseMoved(MouseEvent e) {
 
 		Point p = e.getPoint();
-		boolean resize = false;
-		totalWidth	= panel.getWidth() - (2*ResizerPanel.shift);
-		int sysWidth	= Math.round(panel.frame.percents[0] * (totalWidth/((float) CENT)));
-		int cacheWidth	= Math.round(panel.frame.percents[1] * (totalWidth/((float) CENT)));
-		int dataWidth	= Math.round(panel.frame.percents[2] * (totalWidth/((float) CENT)));
-		int x = ResizerPanel.shift;
 
 		if (p.y > ResizerPanel.shift && p.y < (ResizerPanel.shift + ResizerPanel.height)) {
-			// ANDROID/CACHE resize
+
+			resizes = new boolean[] {panel.frame.jbSys.getBackground() != Util.DARK, panel.frame.jbCache.getBackground() != Util.DARK, panel.frame.jbData.getBackground() != Util.DARK};
+			totalWidth	= panel.getWidth() - (2*ResizerPanel.shift);
+			int sysWidth	= Math.round(panel.frame.percents[0] * (totalWidth/((float) CENT)));
+			int cacheWidth	= Math.round(panel.frame.percents[1] * (totalWidth/((float) CENT)));
+			int dataWidth	= Math.round(panel.frame.percents[2] * (totalWidth/((float) CENT)));
+			int x = ResizerPanel.shift;
+
+			// ANDROID resize
 			x += sysWidth;
-			resize = panel.frame.jbSys.getBackground() != Color.BLACK;
-			if (Math.abs(p.x - x) < 2 && resize) {
+			if (Math.abs(p.x - x) < 3 && resizes[0]) {
 				panel.setCursor(new Cursor(Cursor.E_RESIZE_CURSOR));
 				sys = true;
 				return;
 			}
-			// CACHE/DATA resize
+			// CACHE resize
 			x += cacheWidth;
-			resize = panel.frame.jbCache.getBackground() != Color.BLACK;
-			if (Math.abs(p.x - x) < 2 && resize) {
+			if (Math.abs(p.x - x) < 3 && resizes[1]) {
 				panel.setCursor(new Cursor(Cursor.E_RESIZE_CURSOR));
 				cache = true;
 				return;
 			}
-			// DATA/FAT resize
+			// DATA resize
 			x += dataWidth;
-			resize = panel.frame.jbData.getBackground() != Color.BLACK;
-			if (Math.abs(p.x - x) < 2 && resize) {
+			if (Math.abs(p.x - x) < 3 && resizes[2]) {
 				panel.setCursor(new Cursor(Cursor.E_RESIZE_CURSOR));
 				data = true;
 				return;
@@ -86,44 +88,51 @@ public class ResizerListener extends MouseAdapter {
 		Point p = e.getPoint();
 		int sysWidth	= Math.round(panel.frame.percents[0] * (totalWidth/((float) CENT)));
 		int cacheWidth	= Math.round(panel.frame.percents[1] * (totalWidth/((float) CENT)));
-		//int dataWidth	= Math.round(panel.frame.percents[2]  * (totalWidth/((float) CENT)));
-		int x, percent, pTotal, ONE = Math.round(CENT/100f);
-		boolean resize;
+		int x, percent, percents[] = panel.frame.percents;
 
 		if (sys) {
 			x = ResizerPanel.shift;
-			resize = panel.frame.jbCache.getBackground() != Color.BLACK;
-			boolean dataResize = panel.frame.jbData.getBackground() != Color.BLACK;
-
-			int i = (resize ? 1 : 2);
-			pTotal = (dataResize || resize ? panel.frame.percents[0] + panel.frame.percents[i] : (CENT - (panel.frame.percents[1] + panel.frame.percents[2])));
 			percent = Math.round(CENT * (((float) (p.x - x))/totalWidth));
-			panel.frame.percents[0] = (percent > 0 ? (percent < pTotal ? percent : pTotal - ONE) : ONE);
-			panel.frame.percents[i] = (dataResize || resize ? pTotal - panel.frame.percents[0] : panel.frame.percents[i]);
+			resize(percents, resizes, percent, 0);
 
 		} else if (cache) {
 			x = ResizerPanel.shift + sysWidth;
-			resize = panel.frame.jbData.getBackground() != Color.BLACK;
-			pTotal = (resize ? panel.frame.percents[1] + panel.frame.percents[2] : CENT - (panel.frame.percents[0] + panel.frame.percents[2]));
 			percent = Math.round(CENT * (((float) (p.x - x))/totalWidth));
-			panel.frame.percents[1] = (percent > 0 ? (percent < pTotal ? percent : pTotal - ONE) : ONE);
-			panel.frame.percents[2] = (resize ? pTotal - panel.frame.percents[1] : panel.frame.percents[2]);
+			resize(percents, resizes, percent, 1);
 
 		}  else if (data) {
 			x = ResizerPanel.shift + sysWidth + cacheWidth;
-			pTotal = CENT - (panel.frame.percents[0] + panel.frame.percents[1]);
 			percent = Math.round(CENT * (((float) (p.x - x))/totalWidth));
-			panel.frame.percents[2] = (percent > 0 ? (percent < pTotal ? percent : pTotal - ONE) : ONE);
+			resize(percents, resizes, percent, 2);
 		}
 
-		changed = (Util.getPercent(panel.frame.percents[0]) != Util.getPercent(panel.frame.iniPercents[0]) ||
-				   Util.getPercent(panel.frame.percents[1]) != Util.getPercent(panel.frame.iniPercents[1]) ||
-				   Util.getPercent(panel.frame.percents[2]) != Util.getPercent(panel.frame.iniPercents[2]));
+		changed = (Util.getPercent(percents[0]) != Util.getPercent(panel.frame.iniPercents[0]) ||
+				   Util.getPercent(percents[1]) != Util.getPercent(panel.frame.iniPercents[1]) ||
+				   Util.getPercent(percents[2]) != Util.getPercent(panel.frame.iniPercents[2]));
 
 		panel.frame.jbReset.setEnabled(changed);
 		panel.frame.jbApply.setEnabled(panel.frame.scatterOK && changed);
 
-		//points[pos].setRect(p.x, p.y, points[pos].getWidth(), points[pos].getHeight());
 		panel.repaint();
+	}
+
+	private void resize(int[] percents, boolean[] resizes, int percent, int n) {
+
+		if (percents == null || resizes == null || resizes.length != percents.length || n >= percents.length) {
+			return;
+		}
+
+		for (int i = n + 1; i < percents.length; i++) {
+			if (resizes[i]) {
+				int totalPercent = percents[n] + percents[i];
+				percents[n] = (percent < ONE ? ONE : (percent > totalPercent - ONE ? totalPercent - ONE : percent));
+				percent = totalPercent - percents[n];
+				percents[i] = (percent < ONE ? ONE : (percent > totalPercent - ONE ? totalPercent - ONE : percent));
+				return;
+			}
+		}
+
+		int totalPercent = percents[n] + CENT - (percents[0] + percents[1] + percents[2]);
+		percents[n] = (percent < ONE ? ONE : (percent > totalPercent - ONE ? totalPercent - ONE : percent));
 	}
 }

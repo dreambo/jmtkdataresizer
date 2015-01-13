@@ -1,7 +1,9 @@
 package mtk.resizer.ctrl;
 
+import static mtk.resizer.util.Util.BS;
+import static mtk.resizer.util.Util.CENT;
+
 import java.awt.BorderLayout;
-import java.awt.Color;
 import java.awt.event.ActionEvent;
 import java.io.File;
 import java.util.ArrayList;
@@ -22,8 +24,6 @@ import mtk.resizer.scatter.IScatter.Info;
 import mtk.resizer.scatter.Scatter;
 import mtk.resizer.scatter.ScatterFactory;
 import mtk.resizer.util.Util;
-import static mtk.resizer.util.Util.CENT;
-import static mtk.resizer.util.Util.BS;
 
 public class ActionListener implements java.awt.event.ActionListener {
 
@@ -346,13 +346,13 @@ public class ActionListener implements java.awt.event.ActionListener {
 	private void handleResizeButtons(Object source) {
 
 		if (source == display.jbSys) {
-			display.jbSys.setBackground(display.jbSys.getBackground() == Color.BLACK ? Util.SYSCOLOR : Color.BLACK);
+			display.jbSys.setBackground(display.jbSys.getBackground() == Util.DARK ? Util.SYSCOLOR : Util.DARK);
 
 		} else if (source == display.jbCache) {
-			display.jbCache.setBackground(display.jbCache.getBackground() == Color.BLACK ? Util.CACHECOLOR : Color.BLACK);
+			display.jbCache.setBackground(display.jbCache.getBackground() == Util.DARK ? Util.CACHECOLOR : Util.DARK);
 
 		} if (source == display.jbData) {
-			display.jbData.setBackground(display.jbData.getBackground() == Color.BLACK ? Util.DATACOLOR : Color.BLACK);
+			display.jbData.setBackground(display.jbData.getBackground() == Util.DARK ? Util.DATACOLOR : Util.DARK);
 		}
 	}
 }
