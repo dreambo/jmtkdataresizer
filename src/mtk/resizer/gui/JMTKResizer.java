@@ -30,10 +30,10 @@ public class JMTKResizer extends JFrame {
 
 	public int look = -1;
 
-	public final static String ABOUT = "JMTKResizer v2.1 by boudhaim@gmail.com";
+	public final static String ABOUT = "JMTKResizer v2.2 by boudhaim@gmail.com";
 
-	public int[] iniPercents = new int[] {5000, 6000, 8000};
-	public int[] percents	 = new int[] {5000, 6000, 8000};
+	public int[]	iniPercents = new int[] {5000, 6000, 8000};
+	public int[]	   percents = new int[] {5000, 6000, 8000};
 
 	public JLabel  jlSys;
 	public JLabel  jlCache;
@@ -234,7 +234,12 @@ public class JMTKResizer extends JFrame {
 
     	jlSys  .setText("System: "  + getSize(percents[0]));
 		jlCache.setText("Cache: "	+ getSize(percents[1]));
-		jlData .setText("Data: "	+ getSize(percents[2]));
-		jlFat  .setText("Storage: "	+ getSize(CENT - (percents[0] + percents[1] + percents[2])));
+		if (Util.FAT_PRESENT) {
+			jlData.setText("Data: "	+ getSize(percents[2]));
+			jlFat .setText("Storage: "	+ getSize(CENT - (percents[0] + percents[1] + percents[2])));
+		} else {
+			jlData.setText("Data: "	+ getSize(CENT - (percents[0] + percents[1])));
+			jlFat .setText("Storage: "	+ getSize(0));
+		}
 	}
 }

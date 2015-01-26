@@ -280,10 +280,10 @@ public class BootRecord implements IBootRecord {
 	 */
 	public static void writeParts(Map<String, Long> diffs) throws IOException {
 
-		long sysDiffSize	= diffs.get(Util.SYS	)/BPS;
-		long cacheDiffSize	= diffs.get(Util.CACHE	)/BPS;
-		long dataDiffSize	= diffs.get(Util.DATA	)/BPS;
-		long fatDiffSize	= diffs.get(Util.FAT	)/BPS;
+		long sysDiffSize	= diffs.get(Util.SYS  )/BPS;
+		long cacheDiffSize	= diffs.get(Util.CACHE)/BPS;
+		long dataDiffSize	= diffs.get(Util.DATA )/BPS;
+		long fatDiffSize	= diffs.get(Util.FAT  )/BPS;
 
 		int partNb;
 		Map<Integer, BootRecord> part;

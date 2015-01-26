@@ -28,6 +28,7 @@ public class Util {
 	public final static Color  DATACOLOR = Color.BLUE;
 	public final static Color   FATCOLOR = Color.GREEN;
 	public final static Color       DARK = Color.DARK_GRAY;
+	public static boolean FAT_PRESENT = true;
 
 	public static int getPercent(int percent) {
 		return Math.round(percent * 100f/CENT);

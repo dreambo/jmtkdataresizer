@@ -40,8 +40,8 @@ public class ResizerPanel extends JPanel {
 		int totalWidth	= getWidth() - (2*shift);
 		int sysWidth	= Math.round(frame.percents[0] * (totalWidth/((float) CENT)));
 		int cacheWidth	= Math.round(frame.percents[1] * (totalWidth/((float) CENT)));
-		int dataWidth	= Math.round(frame.percents[2] * (totalWidth/((float) CENT)));
-		int fatWidth	= totalWidth - (sysWidth + cacheWidth + dataWidth);
+		int dataWidth	= (Util.FAT_PRESENT ? Math.round(frame.percents[2] * (totalWidth/((float) CENT))) : totalWidth - (sysWidth + cacheWidth));
+		int fatWidth	= (Util.FAT_PRESENT ? totalWidth - (sysWidth + cacheWidth + dataWidth) : 0);
 		int x = 0;
 		GradientPaint gp;
 
@@ -67,15 +67,18 @@ public class ResizerPanel extends JPanel {
 		g2.setPaint(gp);
 		g2.fillRect(x + shift, shift, dataWidth, height);
 		g2.setColor(Color.WHITE);
-		g2.drawString(Util.getPercent(frame.percents[2]) + "%", x + dataWidth/2, shift + 4 + height/2);
+		int percent = (Util.FAT_PRESENT ? Util.getPercent(frame.percents[2]) : 100 - (Util.getPercent(frame.percents[0]) + Util.getPercent(frame.percents[1])));
+		g2.drawString(percent + "%", x + dataWidth/2, shift + 4 + height/2);
 
 		// FAT partition
-		x += dataWidth;
-		gp = new GradientPaint(x + shift, shift, Color.DARK_GRAY, x + shift, shift + height/2, Color.GREEN, true);
-		g2.setPaint(gp);
-		g2.fillRect(x + shift, shift, fatWidth, height);
-		g2.setColor(Color.BLACK);
-		g2.drawString(100 - (Util.getPercent(frame.percents[0]) + Util.getPercent(frame.percents[1]) + Util.getPercent(frame.percents[2])) + "%", x + fatWidth/2, shift + 4 + height/2);
+		if (Util.FAT_PRESENT) {
+			x += dataWidth;
+			gp = new GradientPaint(x + shift, shift, Color.DARK_GRAY, x + shift, shift + height/2, Color.GREEN, true);
+			g2.setPaint(gp);
+			g2.fillRect(x + shift, shift, fatWidth, height);
+			g2.setColor(Color.BLACK);
+			g2.drawString(100 - (Util.getPercent(frame.percents[0]) + Util.getPercent(frame.percents[1]) + Util.getPercent(frame.percents[2])) + "%", x + fatWidth/2, shift + 4 + height/2);
+		}
 
 		frame.refreshSize();
 	}

@@ -27,7 +27,7 @@ import mtk.resizer.util.Util;
 
 public class ActionListener implements java.awt.event.ActionListener {
 
-	private String DEFAULT_DIR = "/media/dreambox/WIN8/Users/SONY/Desktop/Tools/MTK/MtkDroidTools/backups";
+	private String DEFAULT_DIR = "/media/dreambox/WIN10/Users/dreambox/Desktop/Tools/MTK/MtkDroidTools/backups";
 
 	private JMTKResizer display;
 
@@ -83,19 +83,12 @@ public class ActionListener implements java.awt.event.ActionListener {
     	boolean sysChange	= (Util.getPercent(display.percents[0]) != Util.getPercent(display.iniPercents[0]));
     	boolean cacheChange = (Util.getPercent(display.percents[1]) != Util.getPercent(display.iniPercents[1]));
     	boolean dataChange	= (Util.getPercent(display.percents[2]) != Util.getPercent(display.iniPercents[2]));
-    	//boolean fatChange	= ((display.percents[0] + display.percents[1] + display.percents[2]) != (display.iniPercents[0] + display.iniPercents[1] + display.iniPercents[2]));
 
 		long newSysSize		= (sysChange	? BS * Math.round((totalSize * display.percents[0]/((double) CENT))/BS) : sysSize);
 		long newCacheSize	= (cacheChange	? BS * Math.round((totalSize * display.percents[1]/((double) CENT))/BS) : cacheSize);
 		long newDataSize	= (dataChange	? BS * Math.round((totalSize * display.percents[2]/((double) CENT))/BS) : dataSize);
 		long newFatSize		= totalSize - (newSysSize + newCacheSize + newDataSize);
-		//long newFatSize		= (fatChange	? (totalSize - (newSysSize + newCacheSize + newDataSize))	 : fatSize);
-		/*
-		long newSysSize		= MB * Math.round((totalSize * display.percents[0]/((double) CENT))/MB);
-		long newCacheSize	= MB * Math.round((totalSize * display.percents[1]/((double) CENT))/MB);
-		long newDataSize	= MB * Math.round((totalSize * display.percents[2]/((double) CENT))/MB);
-		long newFatSize		= totalSize - (newSysSize + newCacheSize + newDataSize);
-		*/
+
 		addLog("After:");
 		addLog("newSysSize="	+ newSysSize	+ " byte (" + Util.getPercent(display.percents[0]) + "%)");
     	addLog("newCacheSize="  + newCacheSize	+ " byte (" + Util.getPercent(display.percents[1]) + "%)");
@@ -132,12 +125,14 @@ public class ActionListener implements java.awt.event.ActionListener {
 		diffs.put(Util.DATA, newDataSize - dataSize);
 
     	// FAT
-		nfos = new String[4];
-		nfos[0] = "0x" + Long.toHexString((Long.valueOf(tmp0.substring(2), 16) + newDataSize));
-		nfos[1] = "0x" + Long.toHexString((Long.valueOf(tmp1.substring(2), 16) + newDataSize));
-		nfos[2] = "0x" + Long.toHexString(newFatSize);
-		vals.put(Util.FAT, nfos);
-		diffs.put(Util.FAT, newFatSize - fatSize);
+		if (Util.FAT_PRESENT) {
+			nfos = new String[4];
+			nfos[0] = "0x" + Long.toHexString((Long.valueOf(tmp0.substring(2), 16) + newDataSize));
+			nfos[1] = "0x" + Long.toHexString((Long.valueOf(tmp1.substring(2), 16) + newDataSize));
+			nfos[2] = "0x" + Long.toHexString(newFatSize);
+			vals.put(Util.FAT, nfos);
+			diffs.put(Util.FAT, newFatSize - fatSize);
+		}
 
 		// MBR, EBR1 and EBR2
 		List<BootRecord> bootRecords = new ArrayList<BootRecord>();
@@ -222,10 +217,10 @@ public class ActionListener implements java.awt.event.ActionListener {
 				display.jbReset.setEnabled(false);
 				display.jbApply.setEnabled(false);
 
-				sysSize		= Long.valueOf(scatter.getInfos().get(Util.SYS).partition_size.substring(2), 16);
+				sysSize		= Long.valueOf(scatter.getInfos().get(Util.SYS  ).partition_size.substring(2), 16);
 				cacheSize	= Long.valueOf(scatter.getInfos().get(Util.CACHE).partition_size.substring(2), 16);
-				dataSize	= Long.valueOf(scatter.getInfos().get(Util.DATA).partition_size.substring(2), 16);
-				fatSize		= Long.valueOf(scatter.getInfos().get(Util.FAT).partition_size.substring(2), 16);
+				dataSize	= Long.valueOf(scatter.getInfos().get(Util.DATA ).partition_size.substring(2), 16);
+				fatSize		= Long.valueOf(scatter.getInfos().get(Util.FAT  ).partition_size.substring(2), 16);
 
 				totalSize	= sysSize + cacheSize + dataSize + fatSize;
 
@@ -264,8 +259,24 @@ public class ActionListener implements java.awt.event.ActionListener {
 		    		EBR2.detectParts(offsets, offsetEBR1, offsetEBR2);
 		    	}
 
-		    	boolean sizesOk = (sysSize > 0 && cacheSize > 0 && dataSize > 0 && fatSize > 0);
-		    	boolean partsOk = (BootRecord.parts.size() == 4);
+		    	if (fatSize > 0) {
+		    		Util.FAT_PRESENT = true;
+		    	} else {
+		    		Util.FAT_PRESENT = false;
+		    		display.percents[2] = display.iniPercents[2] = 0;
+		    	}
+
+		    	boolean sizesOk = (sysSize > 0 && cacheSize > 0 && dataSize > 0);// && fatSize > 0);
+		    	boolean partsOk = (BootRecord.parts.size() > (Util.FAT_PRESENT ? 3 : 2));
+
+		    	if (dataSize == 0) {
+		    		addLog("USRDATA partition is unknown,it can not be resized");
+		    		addLog("You can manualy add USRDATA sizes in the scatter using MtkDroiTools\n");
+		    	}
+		    	if (fatSize == 0) {
+		    		addLog("FAT partition is unknown,it can not be resized");
+		    		addLog("You can manualy add FAT sizes in the scatter using MtkDroiTools\n");
+		    	}
 
 		    	if (!sizesOk) {
 		    		addLog("FAT and DATA sizes must be present in the scatter file!");
@@ -278,7 +289,7 @@ public class ActionListener implements java.awt.event.ActionListener {
 		    		addLog("Please check your scatter, MBR, EBR1 and EBR2 files");
 		    	}
 
-		    	display.scatterOK = (partsOk && sizesOk);
+		    	display.scatterOK = (true || (partsOk && sizesOk));
 		    	display.jbApply.setEnabled(false);
 		    	display.jbReset.setEnabled(false);
 
@@ -287,8 +298,16 @@ public class ActionListener implements java.awt.event.ActionListener {
 		    	addLog("Before: ");
 		    	addLog("sysSize="		+ sysSize	 + " byte (" + Util.getPercent(display.percents[0]) + "%)");
 		    	addLog("cacheSize="		+ cacheSize	 + " byte (" + Util.getPercent(display.percents[1]) + "%)");
-		    	addLog("dataSize="		+ dataSize	 + " byte (" + Util.getPercent(display.percents[2]) + "%)");
-		    	addLog("fatSize="		+ (totalSize - (sysSize + cacheSize + dataSize)) + " byte (" + Util.getPercent((CENT - (display.percents[0] + display.percents[1] + display.percents[2]))) + "%)");
+		    	if (Util.FAT_PRESENT) {
+		    		addLog("dataSize="		+ dataSize	 + " byte (" + Util.getPercent(display.percents[2]) + "%)");
+		    		addLog("fatSize="		+ (totalSize - (sysSize + cacheSize + dataSize)) + " byte (" + Util.getPercent((CENT - (display.percents[0] + display.percents[1] + display.percents[2]))) + "%)");
+		    	} else {
+		    		addLog("dataSize="		+ (totalSize - (sysSize + cacheSize)) + " byte (" + Util.getPercent((CENT - (display.percents[0] + display.percents[1]))) + "%)");
+		    	}
+
+				display.jbSys.setBackground(Util.SYSCOLOR);
+				display.jbCache.setBackground(Util.CACHECOLOR);
+				display.jbData.setBackground(Util.DATACOLOR);
 
 		    	display.refreshSize();
 				display.jpResizer2.repaint();
@@ -309,7 +328,9 @@ public class ActionListener implements java.awt.event.ActionListener {
 	private void initValues() {
     	display.percents[0] = display.iniPercents[0];
     	display.percents[1] = display.iniPercents[1];
-    	display.percents[2] = display.iniPercents[2];
+    	if (Util.FAT_PRESENT) {
+    		display.percents[2] = display.iniPercents[2];
+    	}
     }
 
 	private void addLog(String msg) {
@@ -351,7 +372,7 @@ public class ActionListener implements java.awt.event.ActionListener {
 		} else if (source == display.jbCache) {
 			display.jbCache.setBackground(display.jbCache.getBackground() == Util.DARK ? Util.CACHECOLOR : Util.DARK);
 
-		} if (source == display.jbData) {
+		} if (source == display.jbData && Util.FAT_PRESENT) {
 			display.jbData.setBackground(display.jbData.getBackground() == Util.DARK ? Util.DATACOLOR : Util.DARK);
 		}
 	}

@@ -58,7 +58,7 @@ public class ResizerListener extends MouseAdapter {
 			}
 			// DATA resize
 			x += dataWidth;
-			if (Math.abs(p.x - x) < 3 && resizes[2]) {
+			if (Math.abs(p.x - x) < 3 && resizes[2] && Util.FAT_PRESENT) {
 				panel.setCursor(new Cursor(Cursor.E_RESIZE_CURSOR));
 				data = true;
 				return;
@@ -93,17 +93,17 @@ public class ResizerListener extends MouseAdapter {
 		if (sys) {
 			x = ResizerPanel.shift;
 			percent = Math.round(CENT * (((float) (p.x - x))/totalWidth));
-			resize(percents, resizes, percent, 0);
+			resize(percents, percent, 0);
 
 		} else if (cache) {
 			x = ResizerPanel.shift + sysWidth;
 			percent = Math.round(CENT * (((float) (p.x - x))/totalWidth));
-			resize(percents, resizes, percent, 1);
+			resize(percents, percent, 1);
 
 		}  else if (data) {
 			x = ResizerPanel.shift + sysWidth + cacheWidth;
 			percent = Math.round(CENT * (((float) (p.x - x))/totalWidth));
-			resize(percents, resizes, percent, 2);
+			resize(percents, percent, 2);
 		}
 
 		changed = (Util.getPercent(percents[0]) != Util.getPercent(panel.frame.iniPercents[0]) ||
@@ -116,13 +116,14 @@ public class ResizerListener extends MouseAdapter {
 		panel.repaint();
 	}
 
-	private void resize(int[] percents, boolean[] resizes, int percent, int n) {
+	private void resize(int[] percents, int percent, int n) {
 
 		if (percents == null || resizes == null || resizes.length != percents.length || n >= percents.length) {
 			return;
 		}
 
-		for (int i = n + 1; i < percents.length; i++) {
+		//for (int i = n + 1; i < percents.length - (Util.FAT_PRESENT ? 0 : 1); i++) {
+		for (int i = n + 1; i < (Util.FAT_PRESENT ? percents.length : percents.length - 1); i++) {
 			if (resizes[i]) {
 				int totalPercent = percents[n] + percents[i];
 				percents[n] = (percent < ONE ? ONE : (percent > totalPercent - ONE ? totalPercent - ONE : percent));
@@ -132,7 +133,7 @@ public class ResizerListener extends MouseAdapter {
 			}
 		}
 
-		int totalPercent = percents[n] + CENT - (percents[0] + percents[1] + percents[2]);
+		int totalPercent = percents[n] + CENT - (percents[0] + percents[1] + (Util.FAT_PRESENT ? percents[2] : 0));
 		percents[n] = (percent < ONE ? ONE : (percent > totalPercent - ONE ? totalPercent - ONE : percent));
 	}
 }
