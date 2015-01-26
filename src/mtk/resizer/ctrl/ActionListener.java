@@ -289,7 +289,7 @@ public class ActionListener implements java.awt.event.ActionListener {
 		    		addLog("Please check your scatter, MBR, EBR1 and EBR2 files");
 		    	}
 
-		    	display.scatterOK = (true || (partsOk && sizesOk));
+		    	display.scatterOK = (partsOk && sizesOk);
 		    	display.jbApply.setEnabled(false);
 		    	display.jbReset.setEnabled(false);
 
