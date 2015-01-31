@@ -82,7 +82,7 @@ public abstract class Scatter implements IScatter {
 
 		File modFile = new File(file.getAbsolutePath().replaceAll("(?i)\\.txt", "_MOD.txt"));
 
-		if (modFile.exists() && !modFile.delete()) {
+		if (modFile.getName().equals(file.getName()) || (modFile.exists() && !modFile.delete())) {
 			System.out.println("Error: can not write file: " + modFile);
 
 		} else {
