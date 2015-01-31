@@ -207,7 +207,7 @@ public abstract class Scatter implements IScatter {
 		return (info != null ? info.file_name : null);
 	}
 
-	private Info getInfo(String type) {
+	protected Info getInfo(String type) {
 
 		return infos.get(type);
 	}

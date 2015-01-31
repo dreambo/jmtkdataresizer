@@ -70,8 +70,8 @@ public class ActionListener implements java.awt.event.ActionListener {
 			display.jbApply.setEnabled(false);
 
 		} else if (source.getText().equals("Theme")) {
-				display.look++;
-				display.applyLookAndFeel();
+			display.look++;
+			display.applyLookAndFeel();
 
 		} else {
 			handleResizeButtons(source);
@@ -82,18 +82,20 @@ public class ActionListener implements java.awt.event.ActionListener {
 
     	boolean sysChange	= (Util.getPercent(display.percents[0]) != Util.getPercent(display.iniPercents[0]));
     	boolean cacheChange = (Util.getPercent(display.percents[1]) != Util.getPercent(display.iniPercents[1]));
-    	boolean dataChange	= (Util.getPercent(display.percents[2]) != Util.getPercent(display.iniPercents[2]));
+    	boolean dataChange	= (Util.getPercent(display.percents[2]) != Util.getPercent(display.iniPercents[2]) || !Util.FAT_PRESENT);
 
-		long newSysSize		= (sysChange	? BS * Math.round((totalSize * display.percents[0]/((double) CENT))/BS) : sysSize);
-		long newCacheSize	= (cacheChange	? BS * Math.round((totalSize * display.percents[1]/((double) CENT))/BS) : cacheSize);
-		long newDataSize	= (dataChange	? BS * Math.round((totalSize * display.percents[2]/((double) CENT))/BS) : dataSize);
-		long newFatSize		= totalSize - (newSysSize + newCacheSize + newDataSize);
+		long newSysSize		= (sysChange   ? BS * Math.round((totalSize * display.percents[0]/((double) CENT))/BS) : sysSize);
+		long newCacheSize	= (cacheChange ? BS * Math.round((totalSize * display.percents[1]/((double) CENT))/BS) : cacheSize);
+		long newDataSize	= (Util.FAT_PRESENT ? (dataChange ? BS * Math.round((totalSize * display.percents[2]/((double) CENT))/BS) : dataSize) : totalSize - (newSysSize + newCacheSize));
+		long newFatSize		= (Util.FAT_PRESENT ? totalSize - (newSysSize + newCacheSize + newDataSize) : 0);
 
 		addLog("After:");
 		addLog("newSysSize="	+ newSysSize	+ " byte (" + Util.getPercent(display.percents[0]) + "%)");
     	addLog("newCacheSize="  + newCacheSize	+ " byte (" + Util.getPercent(display.percents[1]) + "%)");
-    	addLog("newDataSize="	+ newDataSize	+ " byte (" + Util.getPercent(display.percents[2]) + "%)");
-    	addLog("newFatSize="	+ newFatSize	+ " byte (" + Util.getPercent((CENT - (display.percents[0] + display.percents[1] + display.percents[2]))) + "%)");
+    	addLog("newDataSize="	+ newDataSize	+ " byte (" + Util.getPercent(Util.FAT_PRESENT ? display.percents[2] : CENT - (display.percents[0] + display.percents[1])) + "%)");
+    	if (Util.FAT_PRESENT) {
+    		addLog("newFatSize="	+ newFatSize	+ " byte (" + (100 - Util.getPercent(display.percents[0] + display.percents[1] + display.percents[2])) + "%)");
+    	}
 
     	Map<String, String[]> vals = new LinkedHashMap<String, String[]>();
     	Map<String, Long> diffs    = new LinkedHashMap<String, Long>();
@@ -170,6 +172,8 @@ public class ActionListener implements java.awt.event.ActionListener {
 			display.iniPercents[2] = display.percents[2];
     	} catch(Exception ex) {
     		ex.printStackTrace();
+    		addLog("Error: " + ex);
+			JOptionPane.showMessageDialog(display, "some thing was wrong, please see logs!");
     	}
 	}
 
@@ -269,23 +273,18 @@ public class ActionListener implements java.awt.event.ActionListener {
 		    	boolean sizesOk = (sysSize > 0 && cacheSize > 0 && dataSize > 0);// && fatSize > 0);
 		    	boolean partsOk = (BootRecord.parts.size() > (Util.FAT_PRESENT ? 3 : 2));
 
-		    	if (dataSize == 0) {
-		    		addLog("USRDATA partition is unknown,it can not be resized");
-		    		addLog("You can manualy add USRDATA sizes in the scatter using MtkDroiTools\n");
-		    	}
 		    	if (fatSize == 0) {
-		    		addLog("FAT partition is unknown,it can not be resized");
+		    		addLog("FAT partition size is unknown, it can not be resized");
 		    		addLog("You can manualy add FAT sizes in the scatter using MtkDroiTools\n");
 		    	}
 
 		    	if (!sizesOk) {
-		    		addLog("FAT and DATA sizes must be present in the scatter file!");
+		    		addLog("DATA partition size must be present in the scatter file!");
 		    		addLog("Please check your scatter (it is made by MtkDroiTools ?)");
-		    		addLog("You can manualy add DATA and FAT sizes in the scatter using MtkDroiTools");
 		    	}
 
 		    	if (!partsOk) {
-		    		addLog("The DATA and FAT partitions must be found!");
+		    		addLog("The SYS, CACHE and DATA partitions must be found in boot records!");
 		    		addLog("Please check your scatter, MBR, EBR1 and EBR2 files");
 		    	}
 
@@ -302,7 +301,7 @@ public class ActionListener implements java.awt.event.ActionListener {
 		    		addLog("dataSize="		+ dataSize	 + " byte (" + Util.getPercent(display.percents[2]) + "%)");
 		    		addLog("fatSize="		+ (totalSize - (sysSize + cacheSize + dataSize)) + " byte (" + Util.getPercent((CENT - (display.percents[0] + display.percents[1] + display.percents[2]))) + "%)");
 		    	} else {
-		    		addLog("dataSize="		+ (totalSize - (sysSize + cacheSize)) + " byte (" + Util.getPercent((CENT - (display.percents[0] + display.percents[1]))) + "%)");
+		    		addLog("dataSize="		+ (totalSize - (sysSize + cacheSize)) + " byte (" + (100 - Util.getPercent(display.percents[0] + display.percents[1])) + "%)");
 		    	}
 
 				display.jbSys.setBackground(Util.SYSCOLOR);

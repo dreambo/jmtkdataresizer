@@ -37,7 +37,7 @@ public class BootRecord implements IBootRecord {
 		//long dataSize = scatter.dataSize;
     	//long totalSize = scatter.totalSize;
 
-    	BootRecord MBR  = new BootRecord(new File(DEFAULT_DIR, "MBR"),  null);
+    	BootRecord MBR  = new BootRecord(new File(DEFAULT_DIR, "MBR"), null);
     	BootRecord EBR1 = new BootRecord(new File(DEFAULT_DIR, "EBR1"), MBR);
     	BootRecord EBR2 = new BootRecord(new File(DEFAULT_DIR, "EBR2"), MBR);
     	BootRecord.offsetMBR = scatter.getMBRStart();
@@ -70,9 +70,9 @@ public class BootRecord implements IBootRecord {
 			if (parent.getPartType(i) == 5) {
 				if (first) {
 					return parent.getPartStart(i);
-				} else {
-					first = true;
 				}
+
+				first = true;
 			}
 		}
 
@@ -283,7 +283,7 @@ public class BootRecord implements IBootRecord {
 		long sysDiffSize	= diffs.get(Util.SYS  )/BPS;
 		long cacheDiffSize	= diffs.get(Util.CACHE)/BPS;
 		long dataDiffSize	= diffs.get(Util.DATA )/BPS;
-		long fatDiffSize	= diffs.get(Util.FAT  )/BPS;
+		long fatDiffSize	= Util.FAT_PRESENT ? diffs.get(Util.FAT)/BPS : 0;
 
 		int partNb;
 		Map<Integer, BootRecord> part;
@@ -328,15 +328,17 @@ public class BootRecord implements IBootRecord {
 		partNb = (Integer) part.keySet().toArray()[0];
 		br = part.get(partNb);
 		file = br.BR;
-		// patch the start and size
-		br.writeSectors(partNb, true, br.getPartStart(partNb) + dataDiffSize + diffStart);
-		br.writeSectors(partNb, false, br.getPartSize(partNb) + fatDiffSize);
+		if (Util.FAT_PRESENT) {
+			// patch the start and size
+			br.writeSectors(partNb, true, br.getPartStart(partNb) + dataDiffSize + diffStart);
+			br.writeSectors(partNb, false, br.getPartSize(partNb) + fatDiffSize);
+		}
 		br.writeToFile(new File(file.getAbsolutePath() + "_MOD"));
 	}
 
 	public void detectParts(Map<String, Long> offsets, long offsetEBR1, long offsetEBR2) throws IOException {
 
-		long offset, offsetEBR = offsetMBR;
+		long offset, offsetEBR = offsetMBR/BPS;
 
 		offsetEBR += (offsetEBR1 + offsetEBR2);
 
@@ -344,13 +346,14 @@ public class BootRecord implements IBootRecord {
 
 			long start = offsets.get(type);
 
-			for (int i = 0; i < 4 && getPartType(i) > 5; i++) { // browse the 4 partitions in the partition table
-
-				offset   = offsetEBR + getPartStart(i);
-				if (offset == start/BPS) {
-					Map<Integer, BootRecord> part = new HashMap<Integer, BootRecord>();
-					part.put(i, this);
-					parts.put(type, part);
+			for (int i = 0; i < 4; i++) { // browse the 4 partitions in the partition table
+				if (getPartType(i) > 5) {
+					offset = offsetEBR + getPartStart(i);
+					if (offset == start/BPS) {
+						Map<Integer, BootRecord> part = new HashMap<Integer, BootRecord>();
+						part.put(i, this);
+						parts.put(type, part);
+					}
 				}
 			}
 		}
