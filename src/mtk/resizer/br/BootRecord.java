@@ -9,6 +9,7 @@ import java.io.OutputStream;
 import java.util.HashMap;
 import java.util.Map;
 
+import mtk.resizer.flash.Partition;
 import mtk.resizer.scatter.Scatter;
 import mtk.resizer.scatter.Scatter1;
 import mtk.resizer.util.Util;
@@ -16,15 +17,17 @@ import mtk.resizer.util.Util;
 public class BootRecord implements IBootRecord {
 
 	public File BR;
-	private IBootRecord parent;
+	private BootRecord parent;
 	private byte[] bytes;
+	public long offset;
 
 	public static long offsetMBR;
 	public final static Map<String, Map<Integer, BootRecord>> parts = new HashMap<String, Map<Integer, BootRecord>>();
 
-	public BootRecord(File BR, BootRecord parent) throws Exception {
+	public BootRecord(File BR, BootRecord parent, long offset) throws Exception {
 		this.BR = BR;
 		this.parent = parent;
+		this.offset = offset;
 	}
 
 	/**
@@ -37,9 +40,9 @@ public class BootRecord implements IBootRecord {
 		//long dataSize = scatter.dataSize;
     	//long totalSize = scatter.totalSize;
 
-    	BootRecord MBR  = new BootRecord(new File(DEFAULT_DIR, "MBR"), null);
-    	BootRecord EBR1 = new BootRecord(new File(DEFAULT_DIR, "EBR1"), MBR);
-    	BootRecord EBR2 = new BootRecord(new File(DEFAULT_DIR, "EBR2"), MBR);
+    	BootRecord MBR  = new BootRecord(new File(DEFAULT_DIR, "MBR"), null, scatter.getStart(Util.MBR )/Util.BPS);
+    	BootRecord EBR1 = new BootRecord(new File(DEFAULT_DIR, "EBR1"), MBR, scatter.getStart(Util.EBR1)/Util.BPS);
+    	BootRecord EBR2 = new BootRecord(new File(DEFAULT_DIR, "EBR2"), MBR, scatter.getStart(Util.EBR2)/Util.BPS);
     	BootRecord.offsetMBR = scatter.getMBRStart();
 
     	long offsetEBR1 = EBR1.getOffset(true);
@@ -248,6 +251,17 @@ public class BootRecord implements IBootRecord {
 	 * @param file
 	 * @throws IOException
 	 */
+	public void writeToFile() throws IOException {
+		File file = new File(BR.getAbsolutePath() + "_MOD");
+		writeToFile(file);
+	}
+
+	/**
+	 * write bytes in file
+	 * @param bytes
+	 * @param file
+	 * @throws IOException
+	 */
 	private void writeToFile(File file) throws IOException {
 
 		String err  = "File " + file + " not writable or an invalid boot sector!";
@@ -279,6 +293,64 @@ public class BootRecord implements IBootRecord {
 	 * @param data : DATA or FAT
 	 */
 	public static void writeParts(Map<String, Long> diffs) throws IOException {
+
+		long sysDiffSize	= diffs.get(Util.SYS  )/BPS;
+		long cacheDiffSize	= diffs.get(Util.CACHE)/BPS;
+		long dataDiffSize	= diffs.get(Util.DATA )/BPS;
+		long fatDiffSize	= Util.FAT_PRESENT ? diffs.get(Util.FAT)/BPS : 0;
+
+		int partNb;
+		Map<Integer, BootRecord> part;
+		BootRecord br;
+		long diffStart;
+
+		// SYS
+		part = parts.get(Util.SYS);
+		partNb = (Integer) part.keySet().toArray()[0];
+		br = part.get(partNb);
+		// patch the size
+		br.setPartSize(partNb, br.getPartSize(partNb) + sysDiffSize);
+		br.writeToFile();
+		diffStart = 0;
+
+		// CACHE
+		part = parts.get(Util.CACHE);
+		partNb = (Integer) part.keySet().toArray()[0];
+		br = part.get(partNb);
+		// patch the start and size
+		br.setPartStart(partNb, br.getPartStart(partNb) + sysDiffSize + diffStart);
+		br.setPartSize(partNb, br.getPartSize(partNb) + cacheDiffSize);
+		br.writeToFile();
+		diffStart += sysDiffSize;
+
+		// DATA
+		part = parts.get(Util.DATA);
+		partNb = (Integer) part.keySet().toArray()[0];
+		br = part.get(partNb);
+		// patch the start and size
+		br.setPartStart(partNb, br.getPartStart(partNb) + cacheDiffSize + diffStart);
+		br.setPartSize(partNb, br.getPartSize(partNb) + dataDiffSize);
+		br.writeToFile();
+		diffStart += cacheDiffSize;
+
+		// FAT
+		part = parts.get(Util.FAT);
+		partNb = (Integer) part.keySet().toArray()[0];
+		br = part.get(partNb);
+		if (Util.FAT_PRESENT) {
+			// patch the start and size
+			br.setPartStart(partNb, br.getPartStart(partNb) + dataDiffSize + diffStart);
+			br.setPartSize(partNb, br.getPartSize(partNb) + fatDiffSize);
+		}
+		br.writeToFile();
+	}
+
+	/**
+	 * write in the boot file the new size or start (data or fat)
+	 * @param newDataSize : new data size in byte
+	 * @param data : DATA or FAT
+	 */
+	public static void writeParts2(Map<String, Long> diffs) throws IOException {
 
 		long sysDiffSize	= diffs.get(Util.SYS  )/BPS;
 		long cacheDiffSize	= diffs.get(Util.CACHE)/BPS;
@@ -334,6 +406,20 @@ public class BootRecord implements IBootRecord {
 			br.writeSectors(partNb, false, br.getPartSize(partNb) + fatDiffSize);
 		}
 		br.writeToFile(new File(file.getAbsolutePath() + "_MOD"));
+	}
+
+	public void detectParts(Partition part) throws IOException {
+
+		//long totalOffset = getTotalOffset();
+
+		// browse the 4 partitions in the partition table
+		for (int i = 0; i < 4; i++) {
+			if (getPartType(i) > 5 && BPS*(offset + getPartStart(i)) == part.start) {
+				part.partNb = i;
+				part.BR = this;
+				return;
+			}
+		}
 	}
 
 	public void detectParts(Map<String, Long> offsets, long offsetEBR1, long offsetEBR2) throws IOException {

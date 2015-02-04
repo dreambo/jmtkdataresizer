@@ -9,6 +9,8 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 import mtk.resizer.br.BootRecord;
+import mtk.resizer.flash.Flash;
+import mtk.resizer.flash.Partition;
 import mtk.resizer.util.Util;
 
 public abstract class Scatter implements IScatter {
@@ -216,6 +218,59 @@ public abstract class Scatter implements IScatter {
 		return infos;
 	}
 
+	public Flash getFlash() {
+		Info info;
+		Partition part, prev = null;
+		Flash flash = new Flash();
+
+		// ANDROID
+		part = new Partition(Util.SYS);
+		info = getInfo(part.name);
+		part.start = Long.valueOf(info.physical_start_addr.substring(2), 16);
+		part.size  = Long.valueOf(info.partition_size.substring(2), 16);
+		part.previous = prev;
+		flash.parts.add(part);
+		prev = part;
+		// CACHE
+		part = new Partition(Util.CACHE);
+		info = getInfo(part.name);
+		part.start = Long.valueOf(info.physical_start_addr.substring(2), 16);
+		part.size  = Long.valueOf(info.partition_size.substring(2), 16);
+		part.previous = prev;
+		flash.parts.add(part);
+		prev = part;
+		// DATA
+		part = new Partition(Util.DATA);
+		info = getInfo(part.name);
+		part.start = Long.valueOf(info.physical_start_addr.substring(2), 16);
+		part.size  = Long.valueOf(info.partition_size.substring(2), 16);
+		part.previous = prev;
+		flash.parts.add(part);
+		prev = part;
+		// FAT
+		part = new Partition(Util.FAT);
+		info = getInfo(part.name);
+		part.start = Long.valueOf(info.physical_start_addr.substring(2), 16);
+		part.size  = Long.valueOf(info.partition_size.substring(2), 16);
+		part.previous = prev;
+		flash.parts.add(part);
+
+		return flash;
+	}
+
+	public long getStart(String type) {
+
+		Info info = getInfo(type);
+		String start;
+		return (info == null || (start = info.physical_start_addr) == null || !start.startsWith("0x") ? -1 : Long.valueOf(start.substring(2), 16));
+	}
+
+	public long getSize(String type) {
+
+		Info info = getInfo(type);
+		String size;
+		return (info == null || (size = info.partition_size) == null || !size.startsWith("0x") ? -1 : Long.valueOf(size.substring(2), 16));
+	}
 
 	/**
 	 * make changes in the scatter, with this values

@@ -45,9 +45,9 @@ public class ScatterFactory {
     	BootRecord.offsetMBR = scatter.getMBRStart();
     	BootRecord.parts.clear();
 
-    	BootRecord MBR  = (scatter.getMBR()  == null ? null : new BootRecord(new File(dir, scatter.getMBR()),  null));
-    	BootRecord EBR1 = (scatter.getEBR1() == null ? null : new BootRecord(new File(dir, scatter.getEBR1()), MBR));
-    	BootRecord EBR2 = (scatter.getEBR2() == null ? null : new BootRecord(new File(dir, scatter.getEBR2()), MBR));
+    	BootRecord MBR  = (scatter.getMBR()  == null ? null : new BootRecord(new File(dir, scatter.getMBR()), null, scatter.getStart(Util.MBR )/Util.BPS));
+    	BootRecord EBR1 = (scatter.getEBR1() == null ? null : new BootRecord(new File(dir, scatter.getEBR1()), MBR, scatter.getStart(Util.EBR1)/Util.BPS));
+    	BootRecord EBR2 = (scatter.getEBR2() == null ? null : new BootRecord(new File(dir, scatter.getEBR2()), MBR, scatter.getStart(Util.EBR2)/Util.BPS));
 
     	Map<String, Long> offsets = new LinkedHashMap<String, Long>();
     	for (String type: scatter.getInfos().keySet()) {
