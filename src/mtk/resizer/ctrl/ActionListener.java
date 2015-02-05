@@ -1,7 +1,7 @@
 package mtk.resizer.ctrl;
 
-import static mtk.resizer.util.Util.BS;
 import static mtk.resizer.util.Util.BPS;
+import static mtk.resizer.util.Util.BS;
 import static mtk.resizer.util.Util.CENT;
 
 import java.awt.BorderLayout;
@@ -81,213 +81,10 @@ public class ActionListener implements java.awt.event.ActionListener {
 
     private void applyChanges() {
 
-    	boolean sysChange	= (Util.getPercent(display.percents[0]) != Util.getPercent(display.iniPercents[0]));
-    	boolean cacheChange = (Util.getPercent(display.percents[1]) != Util.getPercent(display.iniPercents[1]));
-    	boolean dataChange	= (Util.getPercent(display.percents[2]) != Util.getPercent(display.iniPercents[2]) || !Util.FAT_PRESENT);
-
-		long newSysSize		= (sysChange   ? BS * Math.round((totalSize * display.percents[0]/((double) CENT))/BS) : sysSize);
-		long newCacheSize	= (cacheChange ? BS * Math.round((totalSize * display.percents[1]/((double) CENT))/BS) : cacheSize);
-		long newDataSize	= (Util.FAT_PRESENT ? (dataChange ? BS * Math.round((totalSize * display.percents[2]/((double) CENT))/BS) : dataSize) : totalSize - (newSysSize + newCacheSize));
-		long newFatSize		= (Util.FAT_PRESENT ? totalSize - (newSysSize + newCacheSize + newDataSize) : 0);
-
-		addLog("After:");
-		addLog("newSysSize="	+ newSysSize	+ " byte (" + Util.getPercent(display.percents[0]) + "%)");
-    	addLog("newCacheSize="  + newCacheSize	+ " byte (" + Util.getPercent(display.percents[1]) + "%)");
-    	addLog("newDataSize="	+ newDataSize	+ " byte (" + Util.getPercent(Util.FAT_PRESENT ? display.percents[2] : CENT - (display.percents[0] + display.percents[1])) + "%)");
-    	if (Util.FAT_PRESENT) {
-    		addLog("newFatSize="	+ newFatSize	+ " byte (" + (100 - Util.getPercent(display.percents[0] + display.percents[1] + display.percents[2])) + "%)");
-    	}
-
     	Map<String, String[]> vals = new LinkedHashMap<String, String[]>();
-    	Map<String, Long> diffs    = new LinkedHashMap<String, Long>();
-    	String nfos[], tmp0, tmp1;
-
-    	// SYS
-    	Info sysInfo = scatter.getInfos().get(Util.SYS);
-		nfos = new String[4];
-		nfos[0] = tmp0 = sysInfo.linear_start_addr;
-		nfos[1] = tmp1 = sysInfo.physical_start_addr;
-		nfos[2] = "0x" + Long.toHexString(newSysSize);
-		vals.put(Util.SYS, nfos);
-		diffs.put(Util.SYS, newSysSize - sysSize);
-
-    	// CACHE
-		nfos = new String[4];
-		nfos[0] = tmp0 = "0x" + Long.toHexString((Long.valueOf(tmp0.substring(2), 16) + newSysSize));
-		nfos[1] = tmp1 = "0x" + Long.toHexString((Long.valueOf(tmp1.substring(2), 16) + newSysSize));
-		nfos[2] = "0x" + Long.toHexString(newCacheSize);
-		vals.put(Util.CACHE, nfos);
-		diffs.put(Util.CACHE, newCacheSize - cacheSize);
-
-    	// DATA
-		nfos = new String[4];
-		nfos[0] = tmp0 = "0x" + Long.toHexString((Long.valueOf(tmp0.substring(2), 16) + newCacheSize));
-		nfos[1] = tmp1 = "0x" + Long.toHexString((Long.valueOf(tmp1.substring(2), 16) + newCacheSize));
-		nfos[2] = "0x" + Long.toHexString(newDataSize);
-		vals.put(Util.DATA, nfos);
-		diffs.put(Util.DATA, newDataSize - dataSize);
-
-    	// FAT
-		if (Util.FAT_PRESENT) {
-			nfos = new String[4];
-			nfos[0] = "0x" + Long.toHexString((Long.valueOf(tmp0.substring(2), 16) + newDataSize));
-			nfos[1] = "0x" + Long.toHexString((Long.valueOf(tmp1.substring(2), 16) + newDataSize));
-			nfos[2] = "0x" + Long.toHexString(newFatSize);
-			vals.put(Util.FAT, nfos);
-			diffs.put(Util.FAT, newFatSize - fatSize);
-		}
-
-		// MBR, EBR1 and EBR2
-		List<BootRecord> bootRecords = new ArrayList<BootRecord>();
-    	for (String type: BootRecord.parts.keySet()) {
-
-    		Map<Integer, BootRecord> part = BootRecord.parts.get(type);
-
-    		for (BootRecord br: part.values()) {
-    			if (!bootRecords.contains(br)) {
-    				bootRecords.add(br);
-	    			nfos = new String[4];
-	    			nfos[3] = br.BR.getName() + "_MOD";
-	    			if (br.BR.getName().toUpperCase().contains(Util.MBR)) {
-	    				vals.put(Util.MBR, nfos);
-	    			} else if (br.BR.getName().toUpperCase().contains(Util.EBR1)) {
-	    				vals.put(Util.EBR1, nfos);
-	    			} else if (br.BR.getName().toUpperCase().contains(Util.EBR2)) {
-	    				vals.put(Util.EBR2, nfos);
-	    			}
-    			}
-    		}
-    	}
-
-    	try {
-    		// modify the scatter with this new values
-    		scatter.modify(vals);
-    		scatter.writeMod();
-
-    		BootRecord.writeParts(diffs);
-
-			display.jbReset.setEnabled(false);
-			display.jbApply.setEnabled(false);
-			display.iniPercents[0] = display.percents[0];
-			display.iniPercents[1] = display.percents[1];
-			display.iniPercents[2] = display.percents[2];
-    	} catch(Exception ex) {
-    		ex.printStackTrace();
-    		addLog("Error: " + ex);
-			JOptionPane.showMessageDialog(display, "some thing was wrong, please see logs!");
-    	}
-	}
-
-    private void applyChanges3() {
-
-    	boolean sysChange	= (Util.getPercent(display.percents[0]) != Util.getPercent(display.iniPercents[0]));
-    	boolean cacheChange = (Util.getPercent(display.percents[1]) != Util.getPercent(display.iniPercents[1]));
-    	boolean dataChange	= (Util.getPercent(display.percents[2]) != Util.getPercent(display.iniPercents[2]) || !Util.FAT_PRESENT);
-
-		long newSysSize		= (sysChange   ? BS * Math.round((totalSize * display.percents[0]/((double) CENT))/BS) : sysSize);
-		long newCacheSize	= (cacheChange ? BS * Math.round((totalSize * display.percents[1]/((double) CENT))/BS) : cacheSize);
-		long newDataSize	= (Util.FAT_PRESENT ? (dataChange ? BS * Math.round((totalSize * display.percents[2]/((double) CENT))/BS) : dataSize) : totalSize - (newSysSize + newCacheSize));
-		long newFatSize		= (Util.FAT_PRESENT ? totalSize - (newSysSize + newCacheSize + newDataSize) : 0);
-
-		addLog("After:");
-		addLog("newSysSize="	+ newSysSize	+ " byte (" + Util.getPercent(display.percents[0]) + "%)");
-    	addLog("newCacheSize="  + newCacheSize	+ " byte (" + Util.getPercent(display.percents[1]) + "%)");
-    	addLog("newDataSize="	+ newDataSize	+ " byte (" + Util.getPercent(Util.FAT_PRESENT ? display.percents[2] : CENT - (display.percents[0] + display.percents[1])) + "%)");
-    	if (Util.FAT_PRESENT) {
-    		addLog("newFatSize="	+ newFatSize	+ " byte (" + (100 - Util.getPercent(display.percents[0] + display.percents[1] + display.percents[2])) + "%)");
-    	}
-
-    	Map<String, String[]> vals = new LinkedHashMap<String, String[]>();
-    	Map<String, Long> diffs    = new LinkedHashMap<String, Long>();
-    	String nfos[], tmp0, tmp1;
-
-    	// SYS
-    	flash.parts.get(0).size = 0;
-    	Info sysInfo = scatter.getInfos().get(Util.SYS);
-		nfos = new String[4];
-		nfos[0] = tmp0 = sysInfo.linear_start_addr;
-		nfos[1] = tmp1 = sysInfo.physical_start_addr;
-		nfos[2] = "0x" + Long.toHexString(newSysSize);
-		vals.put(Util.SYS, nfos);
-		diffs.put(Util.SYS, newSysSize - sysSize);
-    	flash.parts.get(0).size = newSysSize;
-
-    	// CACHE
-		nfos = new String[4];
-		nfos[0] = tmp0 = "0x" + Long.toHexString((Long.valueOf(tmp0.substring(2), 16) + newSysSize));
-		nfos[1] = tmp1 = "0x" + Long.toHexString((Long.valueOf(tmp1.substring(2), 16) + newSysSize));
-		nfos[2] = "0x" + Long.toHexString(newCacheSize);
-		vals.put(Util.CACHE, nfos);
-		diffs.put(Util.CACHE, newCacheSize - cacheSize);
-    	flash.parts.get(1).size = newCacheSize;
-
-    	// DATA
-		nfos = new String[4];
-		nfos[0] = tmp0 = "0x" + Long.toHexString((Long.valueOf(tmp0.substring(2), 16) + newCacheSize));
-		nfos[1] = tmp1 = "0x" + Long.toHexString((Long.valueOf(tmp1.substring(2), 16) + newCacheSize));
-		nfos[2] = "0x" + Long.toHexString(newDataSize);
-		vals.put(Util.DATA, nfos);
-		diffs.put(Util.DATA, newDataSize - dataSize);
-    	flash.parts.get(2).size = newDataSize;
-
-    	// FAT
-		if (Util.FAT_PRESENT) {
-			nfos = new String[4];
-			nfos[0] = "0x" + Long.toHexString((Long.valueOf(tmp0.substring(2), 16) + newDataSize));
-			nfos[1] = "0x" + Long.toHexString((Long.valueOf(tmp1.substring(2), 16) + newDataSize));
-			nfos[2] = "0x" + Long.toHexString(newFatSize);
-			vals.put(Util.FAT, nfos);
-			diffs.put(Util.FAT, newFatSize - fatSize);
-	    	flash.parts.get(3).size = newFatSize;
-		}
-
-		// MBR, EBR1 and EBR2
-		List<BootRecord> bootRecords = new ArrayList<BootRecord>();
-    	for (String type: BootRecord.parts.keySet()) {
-
-    		Map<Integer, BootRecord> part = BootRecord.parts.get(type);
-
-    		for (BootRecord br: part.values()) {
-    			if (!bootRecords.contains(br)) {
-    				bootRecords.add(br);
-	    			nfos = new String[4];
-	    			nfos[3] = br.BR.getName() + "_MOD";
-	    			if (br.BR.getName().toUpperCase().contains(Util.MBR)) {
-	    				vals.put(Util.MBR, nfos);
-	    			} else if (br.BR.getName().toUpperCase().contains(Util.EBR1)) {
-	    				vals.put(Util.EBR1, nfos);
-	    			} else if (br.BR.getName().toUpperCase().contains(Util.EBR2)) {
-	    				vals.put(Util.EBR2, nfos);
-	    			}
-    			}
-    		}
-    	}
-
-    	try {
-    		// modify the scatter with this new values
-    		scatter.modify(vals);
-    		scatter.writeMod();
-
-    		//BootRecord.writeParts(diffs);
-    		flash.write();
-
-			display.jbReset.setEnabled(false);
-			display.jbApply.setEnabled(false);
-			display.iniPercents[0] = display.percents[0];
-			display.iniPercents[1] = display.percents[1];
-			display.iniPercents[2] = display.percents[2];
-    	} catch(Exception ex) {
-    		ex.printStackTrace();
-    		addLog("Error: " + ex);
-			JOptionPane.showMessageDialog(display, "some thing was wrong, please see logs!");
-    	}
-	}
-
-    private void applyChanges2() {
-
-    	Map<String, String[]> vals = new LinkedHashMap<String, String[]>();
-    	String nfos[], tmp0 = null, tmp1 = null, tmp2 = null;
+    	String nfos[], tmp0 = "", tmp1 = "";
     	Info info;
+    	long prevStart = 0, prevSize = 0;
 		addLog("After:");
 
 		for (int i = 0; i < flash.parts.size(); i++) {
@@ -298,41 +95,35 @@ public class ActionListener implements java.awt.event.ActionListener {
 
     		info = scatter.getInfos().get(part.name);
     		nfos = new String[4];
-    		part.start = (i == 0 ? part.start : Long.valueOf(tmp1.substring(2), 16) + Long.valueOf(tmp2.substring(2), 16));
-    		nfos[0] = tmp0 = (i == 0 ? info.linear_start_addr   : "0x" + Long.toHexString((Long.valueOf(tmp0.substring(2), 16) + newSize)));
-    		nfos[1] = tmp1 = (i == 0 ? info.physical_start_addr : "0x" + Long.toHexString((Long.valueOf(tmp1.substring(2), 16) + newSize)));
-    		nfos[2] = tmp2 = "0x" + Long.toHexString(newSize);
+    		part.start = prevStart = (i == 0 ? part.start : prevStart + prevSize);
+    		nfos[0] = tmp0 = (i == 0 ? info.linear_start_addr   : "0x" + Long.toHexString((Long.valueOf(tmp0.substring(2), 16) + prevSize)));
+    		nfos[1] = tmp1 = (i == 0 ? info.physical_start_addr : "0x" + Long.toHexString((Long.valueOf(tmp1.substring(2), 16) + prevSize)));
+    		nfos[2] = "0x" + Long.toHexString(newSize);
+    		part.size  = prevSize  = newSize;
     		vals.put(part.name, nfos);
-    		part.size  = newSize;
     	}
 
 		// MBR, EBR1 and EBR2
 		List<BootRecord> bootRecords = new ArrayList<BootRecord>();
-    	for (String type: BootRecord.parts.keySet()) {
-
-    		Map<Integer, BootRecord> part = BootRecord.parts.get(type);
-
-    		for (BootRecord br: part.values()) {
-    			if (!bootRecords.contains(br)) {
-    				bootRecords.add(br);
-	    			nfos = new String[4];
-	    			nfos[3] = br.BR.getName() + "_MOD";
-	    			if (br.BR.getName().toUpperCase().contains(Util.MBR)) {
-	    				vals.put(Util.MBR, nfos);
-	    			} else if (br.BR.getName().toUpperCase().contains(Util.EBR1)) {
-	    				vals.put(Util.EBR1, nfos);
-	    			} else if (br.BR.getName().toUpperCase().contains(Util.EBR2)) {
-	    				vals.put(Util.EBR2, nfos);
-	    			}
+		for (Partition part: flash.parts) {
+			BootRecord br = part.BR;
+			if (br != null && !bootRecords.contains(br)) {
+				bootRecords.add(br);
+    			nfos = new String[4];
+    			nfos[3] = br.BR.getName() + "_MOD";
+    			if (br.BR.getName().toUpperCase().contains(Util.MBR)) {
+    				vals.put(Util.MBR, nfos);
+    			} else if (br.BR.getName().toUpperCase().contains(Util.EBR1)) {
+    				vals.put(Util.EBR1, nfos);
+    			} else if (br.BR.getName().toUpperCase().contains(Util.EBR2)) {
+    				vals.put(Util.EBR2, nfos);
     			}
-    		}
-    	}
+			}
+		}
 
     	try {
     		// modify the scatter with this new values
-    		scatter.modify(vals);
-    		scatter.writeMod();
-
+    		scatter.writeMod(vals);
     		flash.write();
 
 			display.jbReset.setEnabled(false);
@@ -372,7 +163,7 @@ public class ActionListener implements java.awt.event.ActionListener {
 			File selectedFile = jfc.getSelectedFile();
 			DEFAULT_DIR = selectedFile.getParent();
 			name = selectedFile.getParentFile().getName() + "/" + selectedFile.getName();
-			scatter = ScatterFactory.createScatter(selectedFile, true);
+			scatter = ScatterFactory.createScatter(selectedFile);
 			display.jpTabScatter.removeAll();
 
 			if (scatter.isComplete()) {
@@ -385,8 +176,6 @@ public class ActionListener implements java.awt.event.ActionListener {
 					int blockSize = Integer.valueOf(scatter.block_size.substring(2), 16);
 					BS = (blockSize > 0 && blockSize % 512 == 0 ? blockSize : BS);
 				}
-
-		    	flash = scatter.getFlash();
 
 				display.jtScatFile.setText(name);
 				createScatterTable(scatter);
@@ -404,6 +193,7 @@ public class ActionListener implements java.awt.event.ActionListener {
 		    	display.percents[1] = display.iniPercents[1] = Math.round(CENT * (cacheSize /((float) totalSize)));
 		    	display.percents[2] = display.iniPercents[2] = Math.round(CENT * ( dataSize /((float) totalSize)));
 
+		    	flash = scatter.getFlash();
 		    	detectParts();
 		    	System.out.println("Flash=" + flash + " --> " + flash.isComplete() + " --> " + totalSize + " (" + flash.getTotalSize() + ")");
 
@@ -415,7 +205,7 @@ public class ActionListener implements java.awt.event.ActionListener {
 		    	}
 
 		    	boolean sizesOk = (sysSize > 0 && cacheSize > 0 && dataSize > 0);// && fatSize > 0);
-		    	boolean partsOk = (BootRecord.parts.size() > (Util.FAT_PRESENT ? 3 : 2));
+		    	boolean partsOk = (flash.parts.size() > (Util.FAT_PRESENT ? 3 : 2));
 
 		    	if (fatSize == 0) {
 		    		addLog("FAT partition size is unknown, it can not be resized");
@@ -436,7 +226,7 @@ public class ActionListener implements java.awt.event.ActionListener {
 		    	display.jbApply.setEnabled(false);
 		    	display.jbReset.setEnabled(false);
 
-		    	addLog("Partitions: "	+ BootRecord.parts);
+		    	//addLog("Partitions: "	+ BootRecord.parts);
 		    	addLog("totalSize="		+ totalSize	 + " byte (100%)");
 		    	addLog("Before: ");
 		    	addLog("sysSize="		+ sysSize	 + " byte (" + Util.getPercent(display.percents[0]) + "%)");
@@ -469,13 +259,10 @@ public class ActionListener implements java.awt.event.ActionListener {
 	}
 
 	private void detectParts() throws Exception {
-    	// init
-    	BootRecord.offsetMBR = scatter.getMBRStart();
-    	BootRecord.parts.clear();
 
-    	BootRecord MBR  = (scatter.getMBR()  == null ? null : new BootRecord(new File(DEFAULT_DIR, scatter.getMBR()), null, scatter.getStart(Util.MBR )/BPS));
-    	BootRecord EBR1 = (scatter.getEBR1() == null ? null : new BootRecord(new File(DEFAULT_DIR, scatter.getEBR1()), MBR, scatter.getStart(Util.EBR1)/BPS));
-    	BootRecord EBR2 = (scatter.getEBR2() == null ? null : new BootRecord(new File(DEFAULT_DIR, scatter.getEBR2()), MBR, scatter.getStart(Util.EBR2)/BPS));
+    	BootRecord MBR  = (scatter.getFile(Util.MBR)  == null ? null : new BootRecord(new File(DEFAULT_DIR, scatter.getFile(Util.MBR)),  scatter.getStart(Util.MBR )/BPS));
+    	BootRecord EBR1 = (scatter.getFile(Util.EBR1) == null ? null : new BootRecord(new File(DEFAULT_DIR, scatter.getFile(Util.EBR1)), scatter.getStart(Util.EBR1)/BPS));
+    	BootRecord EBR2 = (scatter.getFile(Util.EBR2) == null ? null : new BootRecord(new File(DEFAULT_DIR, scatter.getFile(Util.EBR2)), scatter.getStart(Util.EBR2)/BPS));
 
     	Map<String, Long> offsets = new LinkedHashMap<String, Long>();
 
@@ -489,53 +276,9 @@ public class ActionListener implements java.awt.event.ActionListener {
         		if (part.BR == null && EBR2 != null) {
             		EBR2.detectParts(part);
             		if (part.BR == null) {
-            			EBR2.setParent(EBR1);
             			EBR2.detectParts(part);
             		}
         		}
-    		}
-    	}
-
-    	System.out.println("Flash=" + flash + " --> " + flash.isComplete() + " --> " + totalSize + " (" + flash.getTotalSize() + ")");
-
-    	/*
-    	Map<String, Long> offsets = new LinkedHashMap<String, Long>();
-    	for (Partition part: flash.parts) {
-    		offsets.put(part.name, part.start);
-    	}
-
-    	Map<String, Long> offsets = new LinkedHashMap<String, Long>();
-    	for (String type: scatter.getInfos().keySet()) {
-    		if (!type.contains("BR")) {
-    			long offset = Long.valueOf(scatter.getInfos().get(type).physical_start_addr.substring(2), 16);
-    			offsets.put(type, offset);
-    		}
-    	}
-		*/
-
-    	long offsetEBR1 = 0;
-    	if (MBR != null) MBR.detectParts(offsets, 0, 0);
-    	if (BootRecord.parts.size() < 4 && EBR1 != null) {
-	    	offsetEBR1 = EBR1.getOffset(true);
-	    	EBR1.detectParts(offsets, offsetEBR1, 0);
-    	}
-    	if (BootRecord.parts.size() < 4 && EBR2 != null) {
-	    	long offsetEBR2 = EBR2.getOffset(false);
-	    	if (offsetEBR2 == 0) {
-	    		EBR2.setParent(EBR1);
-	    		offsetEBR2 = EBR2.getOffset(true);
-	    	}
-    		EBR2.detectParts(offsets, offsetEBR1, offsetEBR2);
-    	}
-
-    	// complete the flash partitions with her numbers and BootRecord
-    	for (Partition partition: flash.parts) {
-    		Map<Integer, BootRecord> part = BootRecord.parts.get(partition.name);
-    		if (part != null) {
-    			partition.partNb = (Integer) part.keySet().toArray()[0];
-    			partition.BR = part.get(partition.partNb);
-    		} else {
-    			//TODO: flash.parts.remove(partition);
     		}
     	}
 	}
@@ -573,7 +316,8 @@ public class ActionListener implements java.awt.event.ActionListener {
 		}
 
 		JTable table = new JTable(cells, new String[] {IScatter.PARTITION_NAME, IScatter.FILE_NAME, IScatter.LINEAR_START_ADDR, IScatter.PHYSICAL_START_ADDR, IScatter.PARTITION_SIZE});
-		table.setEnabled(false);
+		table.setEnabled(true);
+		table.setEditingColumn(2);
 		display.jpTabScatter.add(table.getTableHeader(), BorderLayout.NORTH);
 		display.jpTabScatter.add(table, BorderLayout.CENTER);
 		display.jpTabScatter.validate();

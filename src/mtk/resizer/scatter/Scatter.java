@@ -8,7 +8,6 @@ import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import mtk.resizer.br.BootRecord;
 import mtk.resizer.flash.Flash;
 import mtk.resizer.flash.Partition;
 import mtk.resizer.util.Util;
@@ -17,7 +16,6 @@ public abstract class Scatter implements IScatter {
 
 	protected long dataStart;
 	protected long dataSize;
-	protected long totalSize;
 
 	protected StringBuffer modScatter;
 	protected File file; 
@@ -80,8 +78,9 @@ public abstract class Scatter implements IScatter {
 	 */
 	public abstract void load() throws IOException;
 
-	public void writeMod() throws IOException {
+	public void writeMod(Map<String, String[]> vals) throws IOException {
 
+		modify(vals);
 		File modFile = new File(file.getAbsolutePath().replaceAll("(?i)\\.txt", "_MOD.txt"));
 
 		if (modFile.getName().equals(file.getName()) || (modFile.exists() && !modFile.delete())) {
@@ -94,117 +93,9 @@ public abstract class Scatter implements IScatter {
 		}
 	}
 
-	public void setNewSizes(long newDataSize) {
+	public String getFile(String type) {
 
-		set(DATA_SIZE, newDataSize, true);
-		set(FAT_START, dataStart + newDataSize, true);
-		set(FAT_SIZE,  totalSize - newDataSize, true);
-	}
-
-	public void setNewBR(Map<String, Map<Integer, BootRecord>> parts) {
-
-		String name;
-		boolean changeMBR = false, changeEBR1 = false, changeEBR2 = false;
-
-		for (String type: parts.keySet()) {
-			// get the part of type
-			Map<Integer, BootRecord> part = parts.get(type);
-			File file = ((BootRecord) part.values().toArray()[0]).BR;
-			name = file.getName().toUpperCase();
-			if (name.contains(Util.MBR)) {
-				changeMBR = true;
-			} else if (name.contains(Util.EBR1)) {
-				changeEBR1 = true;
-			} else if (name.contains(Util.EBR2)) {
-				changeEBR2 = true;
-			}
-		}
-
-		set(MBR_NEW,  getMBR()  + (changeMBR  ? "_MOD" : ""), false);
-		set(EBR1_NEW, getEBR1() + (changeEBR1 ? "_MOD" : ""), false);
-		set(EBR2_NEW, getEBR2() + (changeEBR2 ? "_MOD" : ""), false);
-	}
-
-	private void set(String type, Object value, boolean hex) {
-
-		int i = modScatter.indexOf(type);
-		modScatter.replace(i, i + type.length(), (hex ? "0x" + Long.toHexString((Long) value) : value.toString()));
-	}
-
-	/* (non-Javadoc)
-	 * @see com.ebr.swing.IScatter#getMBRStart()
-	 */
-	public long getMBRStart() {
-
-		Info info = getInfo(Util.MBR);
-		String hex;
-
-		return (info != null && (hex = info.physical_start_addr) != null ? Long.valueOf(hex.substring(2), 16) : 0);
-	}
-
-	public long getDataStart() {
-
-		Info info = getInfo(Util.DATA);
-		String hex;
-
-		return (info != null && (hex = info.physical_start_addr) != null ? Long.valueOf(hex.substring(2), 16) : 0);
-	}
-
-	public long getFatStart() {
-
-		Info info = getInfo(Util.FAT);
-		String hex;
-
-		return (info != null && (hex = info.physical_start_addr) != null ? Long.valueOf(hex.substring(2), 16) : 0);
-	}
-
-	public long getDataSize() {
-
-		if (dataSize > 0) {
-			return dataSize;
-		}
-
-		Info info = getInfo(Util.DATA);
-		String hex;
-
-		dataSize = ((hex = info.partition_size) != null ? Long.valueOf(hex.substring(2), 16) : 0);
-		if (dataSize == 0) {
-			dataSize = (getFatStart() - getDataStart());
-		}
-
-		return dataSize;
-	}
-
-	public long getFatSize() {
-
-		Info info = getInfo(Util.FAT);
-		String hex;
-
-		return (info != null && (hex = info.partition_size) != null ? Long.valueOf(hex.substring(2), 16) : 0);
-	}
-
-	public long getTotalSize() {
-
-		return (totalSize = (getDataSize() + getFatSize()));
-	}
-
-	public String getMBR() {
-
-		Info info = getInfo(Util.MBR);
-
-		return (info != null ? info.file_name : null);
-	}
-
-	public String getEBR1() {
-
-		Info info = getInfo(Util.EBR1);
-
-		return (info != null ? info.file_name : null);
-	}
-
-	public String getEBR2() {
-
-		Info info = getInfo(Util.EBR2);
+		Info info = getInfo(type);
 
 		return (info != null ? info.file_name : null);
 	}
@@ -277,5 +168,5 @@ public abstract class Scatter implements IScatter {
 	 * @param vals : ex {"0x123", "0x123", "0x80000", "EBR1_MOD"} linear start, physical start, size and file name
 	 * @throws IOException
 	 */
-	abstract public void modify(Map<String, String[]> vals);
+	abstract protected void modify(Map<String, String[]> vals);
 }

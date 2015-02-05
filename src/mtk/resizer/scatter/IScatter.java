@@ -52,10 +52,8 @@ public interface IScatter {
 	}
 
 	public abstract void load() throws IOException;
-	public abstract long getMBRStart();
-	public abstract long getDataStart();
-	public abstract long getFatStart();
-	public abstract long getDataSize();
-	public abstract long getFatSize();
+	public abstract long getStart(String type);
+	public abstract long getSize(String type);
 	public abstract Map<String, Info> getInfos();
+	public void writeMod(Map<String, String[]> vals) throws IOException;
 }

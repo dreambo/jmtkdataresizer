@@ -30,7 +30,7 @@ public class JMTKResizer extends JFrame {
 
 	public int look = -1;
 
-	public final static String ABOUT = "JMTKResizer v2.3 (not work) by boudhaim@gmail.com";
+	public final static String ABOUT = "JMTKResizer v2.3 by boudhaim@gmail.com";
 
 	public int[]	iniPercents = new int[] {5000, 6000, 8000};
 	public int[]	   percents = new int[] {5000, 6000, 8000};
@@ -91,6 +91,7 @@ public class JMTKResizer extends JFrame {
 		jbApply = new JButton("Apply"); jbApply.setEnabled(false);
 		jbReset = new JButton("Reset"); jbReset.setEnabled(false);
 		jtLog = new JTextArea(ABOUT);
+		jtLog.setEditable(false);
 
 		// jpPlus panel
     	JPanel jpPlus = new JPanel(new FlowLayout(FlowLayout.CENTER));

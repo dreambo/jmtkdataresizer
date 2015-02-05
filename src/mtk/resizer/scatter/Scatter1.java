@@ -22,7 +22,6 @@ public class Scatter1 extends Scatter {
 		String name = null, partName = null;
 
 		modScatter = new StringBuffer();
-		totalSize  = 0;
 		infos.clear();
 
 		while ((line = reader.readLine()) != null) {
