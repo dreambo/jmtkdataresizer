@@ -2,32 +2,38 @@ package mtk.resizer.flash;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.List;
 
-public class Flash {
+import mtk.resizer.util.Util;
 
-	public List<Partition> parts = new ArrayList<Partition>();
+public class Flash extends ArrayList<Partition> {
+
+	private static final long serialVersionUID = 1L;
 
 	public boolean isComplete() {
-		if (parts.size() < 2) {
+		if (size() < 2) {
 			return false;
 		}
 
 		Partition prev = null;
-		for (int i = 0; i < parts.size(); i++) {
-			if (parts.get(i) == null) {
+		for (Partition part: this) {
+
+			if (part == null) {
 				return false;
 			}
 
-			if (prev != parts.get(i).previous) {
+			if (!part.isComplete() && (part.name != Util.FAT || Util.FAT_PRESENT)) {
 				return false;
 			}
 
-			if (prev != null && parts.get(i).start != (prev.start + prev.size)) {
+			if (prev != part.previous) {
 				return false;
 			}
 
-			prev = parts.get(i);
+			if (prev != null && part.start != (prev.start + prev.size)) {
+				return false;
+			}
+
+			prev = part;
 		}
 
 		return true;
@@ -38,22 +44,21 @@ public class Flash {
 	 * @throws IOException
 	 */
 	public void write() throws IOException {
-		if (isComplete()) for (Partition part: parts) {
-			part.write();
+		if (isComplete()) {
+			for (Partition part: this) {
+				part.write();
+			}
 		}
 	}
 
 	public long getTotalSize() {
 		long totalSize = 0;
-		if (isComplete()) for (Partition part: parts) {
-			totalSize += part.size;
+		if (isComplete()) {
+			for (Partition part: this) {
+				totalSize += part.size;
+			}
 		}
 	
 		return totalSize;
-	}
-
-	@Override
-	public String toString() {
-		return parts.toString();
 	}
 }

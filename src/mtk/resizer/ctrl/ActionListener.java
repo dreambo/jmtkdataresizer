@@ -36,13 +36,13 @@ public class ActionListener implements java.awt.event.ActionListener {
 
 	public static long totalSize = 8 * Util.GB;	// initial total size
 
-	private static long sysSize;
-	private static long cacheSize;
-	private static long dataSize;
-	private static long fatSize;
+	private long sysSize;
+	private long cacheSize;
+	private long dataSize;
+	private long fatSize;
 
-    private static Scatter scatter;
-    private static Flash flash;
+    private Scatter scatter;
+    private Flash flash;
 
 	public ActionListener(JMTKResizer display) {
 		this.display = display;
@@ -79,7 +79,7 @@ public class ActionListener implements java.awt.event.ActionListener {
 		}
 	}
 
-    private void applyChanges() {
+   private void applyChanges() {
 
     	Map<String, String[]> vals = new LinkedHashMap<String, String[]>();
     	String nfos[], tmp0 = "", tmp1 = "";
@@ -87,25 +87,30 @@ public class ActionListener implements java.awt.event.ActionListener {
     	long prevStart = 0, prevSize = 0;
 		addLog("After:");
 
-		for (int i = 0; i < flash.parts.size(); i++) {
-			Partition part = flash.parts.get(i);
-        	boolean change = (i < display.percents.length ? Util.getPercent(display.percents[i]) != Util.getPercent(display.iniPercents[i]) : true);
-    		long newSize   = (change ? (i < display.percents.length ? BS * Math.round((totalSize * display.percents[i]/((double) CENT))/BS) : (totalSize - (flash.parts.get(0).size + flash.parts.get(1).size + flash.parts.get(2).size))) : part.size);
-    		addLog(part.name + " newSize="	+ newSize	+ " byte (" + (i < display.percents.length ? Util.getPercent(display.percents[i]) : (100 - Util.getPercent(display.percents[0] + display.percents[1] + display.percents[2]))) + "%)");
+		for (int i = 0; i < flash.size(); i++) {
 
-    		info = scatter.getInfos().get(part.name);
-    		nfos = new String[4];
-    		part.start = prevStart = (i == 0 ? part.start : prevStart + prevSize);
-    		nfos[0] = tmp0 = (i == 0 ? info.linear_start_addr   : "0x" + Long.toHexString((Long.valueOf(tmp0.substring(2), 16) + prevSize)));
-    		nfos[1] = tmp1 = (i == 0 ? info.physical_start_addr : "0x" + Long.toHexString((Long.valueOf(tmp1.substring(2), 16) + prevSize)));
-    		nfos[2] = "0x" + Long.toHexString(newSize);
-    		part.size  = prevSize  = newSize;
-    		vals.put(part.name, nfos);
+			Partition part = flash.get(i);
+
+			if (part.name != Util.FAT || Util.FAT_PRESENT) {
+	
+				long[] result = getNewSize(part);
+				long newSize = result[0];
+	    		addLog(part.name + " newSize="	+ newSize	+ " byte (" + result[1] + "%)");
+
+	    		info = scatter.getInfos().get(part.name);
+	    		nfos = new String[4];
+	    		part.start = prevStart = (i == 0 ? part.start : prevStart + prevSize);
+	    		nfos[0] = tmp0 = (i == 0 ? info.linear_start_addr   : "0x" + Long.toHexString(Long.valueOf(tmp0.substring(2), 16) + prevSize));
+	    		nfos[1] = tmp1 = (i == 0 ? info.physical_start_addr : "0x" + Long.toHexString(Long.valueOf(tmp1.substring(2), 16) + prevSize));
+	    		nfos[2] = "0x" + Long.toHexString(newSize);
+	    		part.size  = prevSize  = newSize;
+	    		vals.put(part.name, nfos);
+			}
     	}
 
 		// MBR, EBR1 and EBR2
 		List<BootRecord> bootRecords = new ArrayList<BootRecord>();
-		for (Partition part: flash.parts) {
+		for (Partition part: flash) {
 			BootRecord br = part.BR;
 			if (br != null && !bootRecords.contains(br)) {
 				bootRecords.add(br);
@@ -136,6 +141,34 @@ public class ActionListener implements java.awt.event.ActionListener {
     		addLog("Error: " + ex);
 			JOptionPane.showMessageDialog(display, "some thing was wrong, please see logs!");
     	}
+	}
+
+	private long[] getNewSize(Partition part) {
+
+		long[] result = new long[2];
+		int i = flash.indexOf(part);
+		boolean last = (part.name == Util.FAT) || (part.name == Util.DATA && !Util.FAT_PRESENT);
+		long percent, size;
+		if (last) {
+			long sumPercent = 0;
+			long sumSize    = 0;
+			for (int j = 0; j < i; j++) {
+				sumPercent += display.percents[j];
+				sumSize    += flash.get(j).size;
+			}
+
+			percent = CENT - sumPercent;
+			size = totalSize - sumSize;
+		} else {
+			percent = display.percents[i];
+			boolean change = (Util.getPercent(display.percents[i]) != Util.getPercent(display.iniPercents[i]));
+			size = (change ? BS * Math.round((totalSize * percent/((double) CENT))/BS) : part.size);
+		}
+
+		result[0] = size;
+		result[1] = Util.getPercent((int) percent);
+
+		return result;
 	}
 
 	private void browseForScatter() {
@@ -187,15 +220,30 @@ public class ActionListener implements java.awt.event.ActionListener {
 				dataSize	= Long.valueOf(scatter.getInfos().get(Util.DATA ).partition_size.substring(2), 16);
 				fatSize		= Long.valueOf(scatter.getInfos().get(Util.FAT  ).partition_size.substring(2), 16);
 
-				totalSize	= sysSize + cacheSize + dataSize + fatSize;
+		    	if (fatSize == 0) {
+					Info info = scatter.getInfos().get(Util.FAT);
+					if (!info.physical_start_addr.equals("0x0")) {
+						String size = JOptionPane.showInputDialog(display, "Please provide the FAT size (start with 0x if hex):");
+						if (size != null) {
+							boolean hex = size.toLowerCase().startsWith("0x");
+							try {
+								fatSize = Long.valueOf(hex ? size.substring(2) : size, hex ? 16 : 10);
+								info.partition_size = "0x" + Long.toHexString(fatSize);
+							} catch(Exception e) {
+								addLog("Wrong size given: " + size);
+							}
+						}
+					} else {
+						addLog("FAT partition not detected, it will not be resized!");						
+					}
+		    	}
+
+		    	totalSize	= sysSize + cacheSize + dataSize + fatSize;
 
 		    	display.percents[0] = display.iniPercents[0] = Math.round(CENT * (  sysSize /((float) totalSize)));
 		    	display.percents[1] = display.iniPercents[1] = Math.round(CENT * (cacheSize /((float) totalSize)));
 		    	display.percents[2] = display.iniPercents[2] = Math.round(CENT * ( dataSize /((float) totalSize)));
 
-		    	flash = scatter.getFlash();
-		    	detectParts();
-		    	System.out.println("Flash=" + flash + " --> " + flash.isComplete() + " --> " + totalSize + " (" + flash.getTotalSize() + ")");
 
 		    	if (fatSize > 0) {
 		    		Util.FAT_PRESENT = true;
@@ -204,8 +252,12 @@ public class ActionListener implements java.awt.event.ActionListener {
 		    		display.percents[2] = display.iniPercents[2] = 0;
 		    	}
 
+		    	flash = scatter.getFlash();
+		    	detectParts();
+		    	addLog("Flash=" + flash + " --> " + (flash.isComplete() ? "OK" : "BAD") + " --> total size: " + (totalSize = flash.getTotalSize()) + ")");
+
 		    	boolean sizesOk = (sysSize > 0 && cacheSize > 0 && dataSize > 0);// && fatSize > 0);
-		    	boolean partsOk = (flash.parts.size() > (Util.FAT_PRESENT ? 3 : 2));
+		    	boolean partsOk = flash.isComplete();
 
 		    	if (fatSize == 0) {
 		    		addLog("FAT partition size is unknown, it can not be resized");
@@ -226,7 +278,7 @@ public class ActionListener implements java.awt.event.ActionListener {
 		    	display.jbApply.setEnabled(false);
 		    	display.jbReset.setEnabled(false);
 
-		    	//addLog("Partitions: "	+ BootRecord.parts);
+		    	//addLog("Partitions: "	+ BootRecord);
 		    	addLog("totalSize="		+ totalSize	 + " byte (100%)");
 		    	addLog("Before: ");
 		    	addLog("sysSize="		+ sysSize	 + " byte (" + Util.getPercent(display.percents[0]) + "%)");
@@ -266,7 +318,7 @@ public class ActionListener implements java.awt.event.ActionListener {
 
     	Map<String, Long> offsets = new LinkedHashMap<String, Long>();
 
-    	for (Partition part: flash.parts) {
+    	for (Partition part: flash) {
 
     		offsets.put(part.name, part.start);
 

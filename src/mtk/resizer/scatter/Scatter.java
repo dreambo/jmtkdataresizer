@@ -100,7 +100,7 @@ public abstract class Scatter implements IScatter {
 		return (info != null ? info.file_name : null);
 	}
 
-	protected Info getInfo(String type) {
+	public Info getInfo(String type) {
 
 		return infos.get(type);
 	}
@@ -120,7 +120,7 @@ public abstract class Scatter implements IScatter {
 		part.start = Long.valueOf(info.physical_start_addr.substring(2), 16);
 		part.size  = Long.valueOf(info.partition_size.substring(2), 16);
 		part.previous = prev;
-		flash.parts.add(part);
+		flash.add(part);
 		prev = part;
 		// CACHE
 		part = new Partition(Util.CACHE);
@@ -128,7 +128,7 @@ public abstract class Scatter implements IScatter {
 		part.start = Long.valueOf(info.physical_start_addr.substring(2), 16);
 		part.size  = Long.valueOf(info.partition_size.substring(2), 16);
 		part.previous = prev;
-		flash.parts.add(part);
+		flash.add(part);
 		prev = part;
 		// DATA
 		part = new Partition(Util.DATA);
@@ -136,7 +136,7 @@ public abstract class Scatter implements IScatter {
 		part.start = Long.valueOf(info.physical_start_addr.substring(2), 16);
 		part.size  = Long.valueOf(info.partition_size.substring(2), 16);
 		part.previous = prev;
-		flash.parts.add(part);
+		flash.add(part);
 		prev = part;
 		// FAT
 		part = new Partition(Util.FAT);
@@ -144,7 +144,7 @@ public abstract class Scatter implements IScatter {
 		part.start = Long.valueOf(info.physical_start_addr.substring(2), 16);
 		part.size  = Long.valueOf(info.partition_size.substring(2), 16);
 		part.previous = prev;
-		flash.parts.add(part);
+		flash.add(part);
 
 		return flash;
 	}

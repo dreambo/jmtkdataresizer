@@ -139,7 +139,7 @@ public class Scatter2 extends Scatter {
 
 		for (String line: lines) {
 			for (String type: vals.keySet()) {
-				if (line.toUpperCase().startsWith(type)) {
+				if (line.toUpperCase().contains(type)) {
 					oldVals = line.split(" ");
 					offset = vals.get(type)[1];
 					name = vals.get(type)[3];
@@ -154,7 +154,7 @@ public class Scatter2 extends Scatter {
 		modScatter = newScatter;
 	}
 
-	protected Info getInfo(String type) {
+	public Info getInfo(String type) {
 
 		for (String typ: infos.keySet()) {
 			if (typ.startsWith(type)) {
