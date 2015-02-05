@@ -187,15 +187,30 @@ public class ActionListener implements java.awt.event.ActionListener {
 				dataSize	= Long.valueOf(scatter.getInfos().get(Util.DATA ).partition_size.substring(2), 16);
 				fatSize		= Long.valueOf(scatter.getInfos().get(Util.FAT  ).partition_size.substring(2), 16);
 
-				totalSize	= sysSize + cacheSize + dataSize + fatSize;
+		    	if (fatSize == 0) {
+					Info info = scatter.getInfos().get(Util.FAT);
+					if (!info.physical_start_addr.equals("0x0")) {
+						String size = JOptionPane.showInputDialog(display, "Please provide the FAT size (start with 0x if hex):");
+						if (size != null) {
+							boolean hex = size.toLowerCase().startsWith("0x");
+							try {
+								fatSize = Long.valueOf(hex ? size.substring(2) : size, hex ? 16 : 10);
+								info.partition_size = "0x" + Long.toHexString(fatSize);
+							} catch(Exception e) {
+								addLog("Wrong size given: " + size);
+							}
+						}
+					} else {
+						addLog("FAT partition not detected, it will not be resized!");						
+					}
+		    	}
+
+		    	totalSize	= sysSize + cacheSize + dataSize + fatSize;
 
 		    	display.percents[0] = display.iniPercents[0] = Math.round(CENT * (  sysSize /((float) totalSize)));
 		    	display.percents[1] = display.iniPercents[1] = Math.round(CENT * (cacheSize /((float) totalSize)));
 		    	display.percents[2] = display.iniPercents[2] = Math.round(CENT * ( dataSize /((float) totalSize)));
 
-		    	flash = scatter.getFlash();
-		    	detectParts();
-		    	System.out.println("Flash=" + flash + " --> " + flash.isComplete() + " --> " + totalSize + " (" + flash.getTotalSize() + ")");
 
 		    	if (fatSize > 0) {
 		    		Util.FAT_PRESENT = true;
@@ -203,6 +218,10 @@ public class ActionListener implements java.awt.event.ActionListener {
 		    		Util.FAT_PRESENT = false;
 		    		display.percents[2] = display.iniPercents[2] = 0;
 		    	}
+
+		    	flash = scatter.getFlash();
+		    	detectParts();
+		    	addLog("Flash=" + flash + " --> " + (flash.isComplete() ? "OK" : "BAD") + " --> total size: " + (totalSize = flash.getTotalSize()) + ")");
 
 		    	boolean sizesOk = (sysSize > 0 && cacheSize > 0 && dataSize > 0);// && fatSize > 0);
 		    	boolean partsOk = (flash.parts.size() > (Util.FAT_PRESENT ? 3 : 2));
