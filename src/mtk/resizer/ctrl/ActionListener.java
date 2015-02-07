@@ -6,7 +6,9 @@ import static mtk.resizer.util.Util.CENT;
 
 import java.awt.BorderLayout;
 import java.awt.event.ActionEvent;
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileReader;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -97,7 +99,7 @@ public class ActionListener implements java.awt.event.ActionListener {
 				long newSize = result[0];
 	    		addLog(part.name + " newSize="	+ newSize	+ " byte (" + result[1] + "%)");
 
-	    		info = scatter.getInfos().get(part.name);
+	    		info = scatter.getInfo(part.name);
 	    		nfos = new String[4];
 	    		part.start = prevStart = (i == 0 ? part.start : prevStart + prevSize);
 	    		nfos[0] = tmp0 = (i == 0 ? info.linear_start_addr   : "0x" + Long.toHexString(Long.valueOf(tmp0.substring(2), 16) + prevSize));
@@ -215,30 +217,38 @@ public class ActionListener implements java.awt.event.ActionListener {
 				display.jbReset.setEnabled(false);
 				display.jbApply.setEnabled(false);
 
-				sysSize		= Long.valueOf(scatter.getInfos().get(Util.SYS  ).partition_size.substring(2), 16);
-				cacheSize	= Long.valueOf(scatter.getInfos().get(Util.CACHE).partition_size.substring(2), 16);
-				dataSize	= Long.valueOf(scatter.getInfos().get(Util.DATA ).partition_size.substring(2), 16);
-				fatSize		= Long.valueOf(scatter.getInfos().get(Util.FAT  ).partition_size.substring(2), 16);
+				sysSize		= Long.valueOf(scatter.getInfo(Util.SYS  ).partition_size.substring(2), 16);
+				cacheSize	= Long.valueOf(scatter.getInfo(Util.CACHE).partition_size.substring(2), 16);
+				dataSize	= Long.valueOf(scatter.getInfo(Util.DATA ).partition_size.substring(2), 16);
+				fatSize		= Long.valueOf(scatter.getInfo(Util.FAT  ).partition_size.substring(2), 16);
+
+				if (dataSize == 0) {
+					String[] startSize = detectInfo(Util.DATA);
+					Info info = scatter.getInfo(Util.DATA);
+
+					if (startSize != null && startSize.length > 2) {
+						dataSize = Long.valueOf(startSize[1].substring(2), 16);
+						info.partition_size = startSize[1];
+						info.physical_start_addr = (info.physical_start_addr == null ? startSize[2] : info.physical_start_addr);
+					}
+				}
+
+				if (fatSize == 0) {
+					String[] startSize = detectInfo(Util.FAT);
+					Info info = scatter.getInfo(Util.FAT);
+
+					if (startSize != null && startSize.length > 2) {
+						fatSize = Long.valueOf(startSize[1].substring(2), 16);
+						info.partition_size = startSize[1];
+						info.physical_start_addr = (info.physical_start_addr == null ? startSize[2] : info.physical_start_addr);
+					}
+				}
 
 		    	if (fatSize == 0) {
-					Info info = scatter.getInfos().get(Util.FAT);
-					if (!info.physical_start_addr.equals("0x0")) {
-						String size = JOptionPane.showInputDialog(display, "Please provide the FAT size (start with 0x if hex):");
-						if (size != null) {
-							boolean hex = size.toLowerCase().startsWith("0x");
-							try {
-								fatSize = Long.valueOf(hex ? size.substring(2) : size, hex ? 16 : 10);
-								info.partition_size = "0x" + Long.toHexString(fatSize);
-							} catch(Exception e) {
-								addLog("Wrong size given: " + size);
-							}
-						}
-					} else {
-						addLog("FAT partition not detected, it will not be resized!");						
-					}
+		    		askForFatSize();
 		    	}
 
-		    	totalSize	= sysSize + cacheSize + dataSize + fatSize;
+		    	totalSize = sysSize + cacheSize + dataSize + fatSize;
 
 		    	display.percents[0] = display.iniPercents[0] = Math.round(CENT * (  sysSize /((float) totalSize)));
 		    	display.percents[1] = display.iniPercents[1] = Math.round(CENT * (cacheSize /((float) totalSize)));
@@ -254,7 +264,7 @@ public class ActionListener implements java.awt.event.ActionListener {
 
 		    	flash = scatter.getFlash();
 		    	detectParts();
-		    	addLog("Flash=" + flash + " --> " + (flash.isComplete() ? "OK" : "BAD") + " --> total size: " + (totalSize = flash.getTotalSize()) + ")");
+		    	addLog("Flash=" + flash + " --> " + (flash.isComplete() ? "OK" : "BAD"));
 
 		    	boolean sizesOk = (sysSize > 0 && cacheSize > 0 && dataSize > 0);// && fatSize > 0);
 		    	boolean partsOk = flash.isComplete();
@@ -310,6 +320,57 @@ public class ActionListener implements java.awt.event.ActionListener {
 		};
 	}
 
+	/**
+	 * uses firmware.info to find missed info
+	 * @param type
+	 * @throws Exception
+	 */
+	private String[] detectInfo(String type) throws Exception {
+		// try to find firmware.info
+		File firmware = new File(DEFAULT_DIR, "firmware.info");
+		firmware = (firmware.canRead() ? firmware : new File(DEFAULT_DIR + "/..", "firmware.info"));
+
+		if (firmware.canRead()) {
+			addLog("firmware=" + firmware.getCanonicalPath());
+			BufferedReader reader = new BufferedReader(new FileReader(firmware));
+			String line;
+
+			while ((line = reader.readLine()) != null) {
+				if (line.toUpperCase().startsWith(type)) {
+					reader.close();
+					return line.split(" ");
+				}
+			}
+
+			reader.close();
+		}
+
+		return null;
+	}
+
+	/**
+	 * 
+	 * @throws Exception
+	 */
+	private void askForFatSize() throws Exception {
+
+		Info info = scatter.getInfo(Util.FAT);
+		if (!info.physical_start_addr.equals("0x0") && fatSize == 0) {
+			String size = JOptionPane.showInputDialog(display, "Please provide the FAT size (start with 0x if hex):");
+			if (size != null) {
+				boolean hex = size.toLowerCase().startsWith("0x");
+				try {
+					fatSize = Long.valueOf(hex ? size.substring(2) : size, hex ? 16 : 10);
+					info.partition_size = "0x" + Long.toHexString(fatSize);
+				} catch(Exception e) {
+					addLog("Wrong size given: " + size);
+				}
+			}
+		} else {
+			addLog("FAT partition not detected, it will not be resized!");						
+		}
+	}
+
 	private void detectParts() throws Exception {
 
     	BootRecord MBR  = (scatter.getFile(Util.MBR)  == null ? null : new BootRecord(new File(DEFAULT_DIR, scatter.getFile(Util.MBR)),  scatter.getStart(Util.MBR )/BPS));
@@ -355,7 +416,7 @@ public class ActionListener implements java.awt.event.ActionListener {
 
 	private void createScatterTable(Scatter scatter) {
 
-		Map<String, Scatter.Info> infos = scatter.getInfos();
+		Map<String, Scatter.Info> infos = scatter.infos;
 		String[][] cells = new String[infos.size()][5];
 		int i = 0;
 

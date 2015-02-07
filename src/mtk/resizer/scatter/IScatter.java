@@ -54,6 +54,6 @@ public interface IScatter {
 	public abstract void load() throws IOException;
 	public abstract long getStart(String type);
 	public abstract long getSize(String type);
-	public abstract Map<String, Info> getInfos();
+	public abstract Info getInfo(String type);
 	public void writeMod(Map<String, String[]> vals) throws IOException;
 }

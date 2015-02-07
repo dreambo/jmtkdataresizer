@@ -25,7 +25,7 @@ public abstract class Scatter implements IScatter {
 	public String block_size;
 	protected String platform;
 
-	protected Map<String, Info> infos = new LinkedHashMap<String, Info>();
+	public Map<String, Info> infos = new LinkedHashMap<String, Info>();
 
 	public boolean isComplete() {
 
@@ -105,13 +105,9 @@ public abstract class Scatter implements IScatter {
 		return infos.get(type);
 	}
 
-	public Map<String, Info> getInfos() {
-		return infos;
-	}
-
 	public Flash getFlash() {
 		Info info;
-		Partition part, prev = null;
+		Partition part;
 		Flash flash = new Flash();
 
 		// ANDROID
@@ -119,31 +115,24 @@ public abstract class Scatter implements IScatter {
 		info = getInfo(part.name);
 		part.start = Long.valueOf(info.physical_start_addr.substring(2), 16);
 		part.size  = Long.valueOf(info.partition_size.substring(2), 16);
-		part.previous = prev;
 		flash.add(part);
-		prev = part;
 		// CACHE
 		part = new Partition(Util.CACHE);
 		info = getInfo(part.name);
 		part.start = Long.valueOf(info.physical_start_addr.substring(2), 16);
 		part.size  = Long.valueOf(info.partition_size.substring(2), 16);
-		part.previous = prev;
 		flash.add(part);
-		prev = part;
 		// DATA
 		part = new Partition(Util.DATA);
 		info = getInfo(part.name);
 		part.start = Long.valueOf(info.physical_start_addr.substring(2), 16);
 		part.size  = Long.valueOf(info.partition_size.substring(2), 16);
-		part.previous = prev;
 		flash.add(part);
-		prev = part;
 		// FAT
 		part = new Partition(Util.FAT);
 		info = getInfo(part.name);
 		part.start = Long.valueOf(info.physical_start_addr.substring(2), 16);
 		part.size  = Long.valueOf(info.partition_size.substring(2), 16);
-		part.previous = prev;
 		flash.add(part);
 
 		return flash;

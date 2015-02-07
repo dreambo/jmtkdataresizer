@@ -30,7 +30,7 @@ public class JMTKResizer extends JFrame {
 
 	public int look = -1;
 
-	public final static String ABOUT = "JMTKResizer v2.3beta2 by boudhaim@gmail.com";
+	public final static String ABOUT = "JMTKResizer v2.3 by boudhaim@gmail.com";
 
 	public int[]	iniPercents = new int[] {5000, 6000, 8000};
 	public int[]	   percents = new int[] {5000, 6000, 8000};
@@ -176,6 +176,7 @@ public class JMTKResizer extends JFrame {
 		help.setText(help.getText() + "If the Apply button is disabled, see the log tab:\n");
 		help.setText(help.getText() + "In general your scatter is incompatible or you do not have the size of FAT in the scatter\n");
 		help.setText(help.getText() + "Please use MTKdroidTools to have this information and add it manualy to your scatter\n");
+		help.setText(help.getText() + "You can use firmware.info (created by MtkDroidTools) : only copy it to the same folder as the scatter");
 		help.setEditable(false);
 		jpTabHelp.add(help);
 		add(jtabPan);

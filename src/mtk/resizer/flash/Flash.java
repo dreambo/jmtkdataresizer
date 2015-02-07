@@ -25,10 +25,6 @@ public class Flash extends ArrayList<Partition> {
 				return false;
 			}
 
-			if (prev != part.previous) {
-				return false;
-			}
-
 			if (prev != null && part.start != (prev.start + prev.size)) {
 				return false;
 			}
@@ -53,12 +49,10 @@ public class Flash extends ArrayList<Partition> {
 
 	public long getTotalSize() {
 		long totalSize = 0;
-		if (isComplete()) {
-			for (Partition part: this) {
-				totalSize += part.size;
-			}
+		for (Partition part: this) {
+			totalSize += part.size;
 		}
-	
+
 		return totalSize;
 	}
 }

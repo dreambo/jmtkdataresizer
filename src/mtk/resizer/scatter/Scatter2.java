@@ -110,7 +110,7 @@ public class Scatter2 extends Scatter {
 		offset1 = (info1 == null ? 0 : Long.valueOf(info1.physical_start_addr.substring(2), 16));
 		offset2 = (info2 == null ? 0 : Long.valueOf(info2.physical_start_addr.substring(2), 16));
 		if (info1 != null) {
-			info1.partition_size = "0x" + Long.toHexString(offset2 - offset1);
+			info1.partition_size = "0x" + Long.toHexString(offset2 > offset1 ? offset2 - offset1 : 0);
 		} else {
 			info1 = new Info();
 			info1.partition_size = "0x0";

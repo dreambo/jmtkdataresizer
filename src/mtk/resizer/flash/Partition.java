@@ -14,8 +14,6 @@ public class Partition {
 	public long size;
 	public BootRecord BR;
 
-	public Partition previous;
-
 	public Partition(String name) {
 		this.name = name;
 	}
