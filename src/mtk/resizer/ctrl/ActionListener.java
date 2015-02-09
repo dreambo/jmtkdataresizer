@@ -224,9 +224,9 @@ public class ActionListener implements java.awt.event.ActionListener {
 
 				if (dataSize == 0) {
 					String[] startSize = detectInfo(Util.DATA);
-					Info info = scatter.getInfo(Util.DATA);
 
 					if (startSize != null && startSize.length > 2) {
+						Info info = scatter.getInfo(Util.DATA);
 						dataSize = Long.valueOf(startSize[1].substring(2), 16);
 						info.partition_size = startSize[1];
 						info.physical_start_addr = (info.physical_start_addr == null ? startSize[2] : info.physical_start_addr);
@@ -235,9 +235,9 @@ public class ActionListener implements java.awt.event.ActionListener {
 
 				if (fatSize == 0) {
 					String[] startSize = detectInfo(Util.FAT);
-					Info info = scatter.getInfo(Util.FAT);
 
 					if (startSize != null && startSize.length > 2) {
+						Info info = scatter.getInfo(Util.FAT);
 						fatSize = Long.valueOf(startSize[1].substring(2), 16);
 						info.partition_size = startSize[1];
 						info.physical_start_addr = (info.physical_start_addr == null ? startSize[2] : info.physical_start_addr);
@@ -272,11 +272,6 @@ public class ActionListener implements java.awt.event.ActionListener {
 		    	if (fatSize == 0) {
 		    		addLog("FAT partition size is unknown, it can not be resized");
 		    		addLog("You can manualy add FAT sizes in the scatter using MtkDroiTools\n");
-		    	}
-
-		    	if (!sizesOk) {
-		    		addLog("DATA partition size must be present in the scatter file!");
-		    		addLog("Please check your scatter (it is made by MtkDroiTools ?)");
 		    	}
 
 		    	if (!partsOk) {
@@ -355,7 +350,7 @@ public class ActionListener implements java.awt.event.ActionListener {
 	private void askForFatSize() throws Exception {
 
 		Info info = scatter.getInfo(Util.FAT);
-		if (!info.physical_start_addr.equals("0x0") && fatSize == 0) {
+		if (info.physical_start_addr != null && !"0x0".equals(info.physical_start_addr) && fatSize == 0) {
 			String size = JOptionPane.showInputDialog(display, "Please provide the FAT size (start with 0x if hex):");
 			if (size != null) {
 				boolean hex = size.toLowerCase().startsWith("0x");

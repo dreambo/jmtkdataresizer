@@ -25,7 +25,7 @@ public class Flash extends ArrayList<Partition> {
 				return false;
 			}
 
-			if (prev != null && part.start != (prev.start + prev.size)) {
+			if (prev != null && part.start != (prev.start + prev.size) && (part.name != Util.FAT || Util.FAT_PRESENT)) {
 				return false;
 			}
 

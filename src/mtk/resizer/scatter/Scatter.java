@@ -131,8 +131,12 @@ public abstract class Scatter implements IScatter {
 		// FAT
 		part = new Partition(Util.FAT);
 		info = getInfo(part.name);
-		part.start = Long.valueOf(info.physical_start_addr.substring(2), 16);
-		part.size  = Long.valueOf(info.partition_size.substring(2), 16);
+		if (info.physical_start_addr != null) {
+			part.start = Long.valueOf(info.physical_start_addr.substring(2), 16);
+		}
+		if (info.partition_size.substring(2) != null) {
+			part.size  = Long.valueOf(info.partition_size.substring(2), 16);
+		}
 		flash.add(part);
 
 		return flash;
