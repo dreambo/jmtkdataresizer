@@ -333,7 +333,7 @@ public class ActionListener implements java.awt.event.ActionListener {
 			while ((line = reader.readLine()) != null) {
 				if (line.toUpperCase().startsWith(type)) {
 					reader.close();
-					return line.split(" ");
+					return line.split("\\s+");
 				}
 			}
 
